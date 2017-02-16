@@ -12,18 +12,24 @@ from pymongo import MongoClient
 #    cpuLimit = ''
 #    memorylimit= ''
 #    storageLimit =''
+#    ipadress = ''
 #}
 
 #container {
-#
+#   userId = ''
+#   ProviderIP=''
+#   serviceName =''
 #}
 
 #service {
-#
+#   name = ''
+#    replicas = ''
+#    bindPorts: [...]
 #}
 
 #client {
-#
+#   username : ''
+#   services : [service names]
 #}
 
 def check_database_exist(client):
@@ -45,8 +51,51 @@ def getUsersCollection():
 def getContainersCollection():
     return db['containers']
 
+def getProviderCollection():
+    return db['providers']
+
 def getServicesCollection():
     return db['services']
 
 def getClientCollection():
     return db['clients']
+
+def insertUser(username,password):
+    user = {
+    "user" : username,
+    "password" : password
+    }
+    userId = getUsersCollection().insert_one(user).inserted_id
+    return userId
+
+def insertProvider(userId, cpuLimit,memorylimit,storageLimit):
+    provider = {
+    "username" : userId,
+    "cpuLimit" : cpuLimit,
+    "memorylimit" : memorylimit,
+    "storageLimit" : storageLimit
+    }
+
+    providerId = getProviderCollection().insert_one(provider).inserted_id
+
+    return providerId
+
+def insertContainer(username,providerIP,serviceName):
+    container = {
+        "username" : username,
+        "providerIP" : providerIP,
+        "serviceName" : serviceName
+    }
+    containerId = getContainersCollection().insert_one(container).insert_id
+    return containerId
+def insertService(serviceName,replicas, bindPorts):
+    service = {
+        "serviceName" =serviceName,
+        "replicas" = replicas,
+        "bindPorts" = bindPorts
+    }
+    serviceId = getServicesCollection().insert_one(service).insert_id
+
+    return serviceId
+
+def insertclient
