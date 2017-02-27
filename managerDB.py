@@ -65,8 +65,8 @@ def insertUser(username,password):
         "user" : username,
         "password" : password
     }
-    userId = getUsersCollection().insert_one(user).inserted_id
-    return userId
+    getUsersCollection().json.insert(user)
+
 
 def insertProvider(userId, cpuLimit,memorylimit,storageLimit):
     provider = {
