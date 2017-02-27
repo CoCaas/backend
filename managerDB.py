@@ -62,18 +62,18 @@ def getClientCollection():
 
 def insertUser(username,password):
     user = {
-    "user" : username,
-    "password" : password
+        "user" : username,
+        "password" : password
     }
     userId = getUsersCollection().insert_one(user).inserted_id
     return userId
 
 def insertProvider(userId, cpuLimit,memorylimit,storageLimit):
     provider = {
-    "username" : userId,
-    "cpuLimit" : cpuLimit,
-    "memorylimit" : memorylimit,
-    "storageLimit" : storageLimit
+        "username" : userId,
+        "cpuLimit" : cpuLimit,
+        "memorylimit" : memorylimit,
+        "storageLimit" : storageLimit
     }
 
     providerId = getProviderCollection().insert_one(provider).inserted_id
@@ -90,12 +90,18 @@ def insertContainer(username,providerIP,serviceName):
     return containerId
 def insertService(serviceName,replicas, bindPorts):
     service = {
-        "serviceName" =serviceName,
-        "replicas" = replicas,
-        "bindPorts" = bindPorts
+        "serviceName" : serviceName,
+        "replicas" : replicas,
+        "bindPorts" : bindPorts
     }
     serviceId = getServicesCollection().insert_one(service).insert_id
 
     return serviceId
 
-def insertclient
+def insertClient(username,services):
+    client = {
+        "username" : username,
+        "services" : services
+    }
+    clientId = getClientCollection().insert_one(client).insert_id
+    return clientId
