@@ -65,12 +65,13 @@ def insertUser(username,password):
         "user" : username,
         "password" : password
     }
-    getUsersCollection().json.insert(user)
+    userId = getUsersCollection().insert_one(user).inserted_id
+    return userId
 
 
 def insertProvider(userId, cpuLimit,memorylimit,storageLimit):
     provider = {
-        "username" : userId,
+        "userId" : userId,
         "cpuLimit" : cpuLimit,
         "memorylimit" : memorylimit,
         "storageLimit" : storageLimit
@@ -86,15 +87,18 @@ def insertContainer(username,providerIP,serviceName):
         "providerIP" : providerIP,
         "serviceName" : serviceName
     }
-    containerId = getContainersCollection().insert_one(container).insert_id
+    containerId = getContainersCollection().insert_one(container).inserted_id
     return containerId
-def insertService(serviceName,replicas, bindPorts):
+def insertService(userId,serviceName,replicas,image,cmd, bindPorts):
     service = {
+        "userId" : userId,
         "serviceName" : serviceName,
         "replicas" : replicas,
+        "image" : image,
+        "cmd" : cmd,
         "bindPorts" : bindPorts
     }
-    serviceId = getServicesCollection().insert_one(service).insert_id
+    serviceId = getServicesCollection().insert_one(service).inserted_id
 
     return serviceId
 
@@ -103,5 +107,5 @@ def insertClient(username,services):
         "username" : username,
         "services" : services
     }
-    clientId = getClientCollection().insert_one(client).insert_id
+    clientId = getClientCollection().insert_one(client).inserted_id
     return clientId
