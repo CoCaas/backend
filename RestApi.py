@@ -19,6 +19,7 @@ from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
 import json
 import managerDB
+import dockerSwarm
 app =Flask(__name__)
 app.secret_key = 'de la merde'
 auth = HTTPBasicAuth()
@@ -38,8 +39,15 @@ def api_getContainer(idClient, idContainer):
 #nbCPU : le nombre de cpu a alouer
 #nbMemory : le nombre de memoire a alouer
 #nbStockage: le nombre de disque a alouer
-@app.route('/Providers/new/<nbCPU>/<nbMemory>/<nbStockage>', methods = ['POST'])
+@app.route('/Providers/new', methods = ['POST'])
 def api_setProvider(nbCPU,nbMemory,nbStockage):
+    nbCPU = request.get_json(force=True)['nbCPU']
+    nbMemory = request.get_json(force=True)['nbMemory']
+    nbStockage = request.get_json(force=True)['nbStockage']
+
+    if nbCPU is None or nbMemory is None or nbStockage is None:
+        return  make_response(jsonify({'error': 'un argument est manquant'}), 403)
+
     if 'username' in session:
         managerDB.insertProvider(session['username'],nbCPU,nbMemory,nbStockage)
         return  make_response(jsonify({'message': 'reussi'}), 202)
@@ -54,6 +62,8 @@ def api_setProvider(nbCPU,nbMemory,nbStockage):
 def api_connect():
     username = request.get_json(force=True)['username']
     password = request.get_json(force=True)['password']
+    if username is None or password is None:
+        return make_response(jsonify({'error': 'Pas de mot de passe ou de nom d utilisateur'}), 403)
     if 'username' in session:
         return  make_response(jsonify({'error': 'vous etes deja connecte'}), 202)
     else:
@@ -62,7 +72,6 @@ def api_connect():
             return make_response(jsonify({'error': 'cet utilisateur n existe pas'}), 403)
         else:
             result =  managerDB.getUsersCollection().find_one({"user" : username})
-
             if pwd_context.verify(password, result['password']):
                 session['username'] = username
                 rep = make_response(jsonify({'success': 'vous etes connecte'}), 202)
@@ -87,7 +96,7 @@ def api_addUser():
     username = request.get_json(force=True)['username']
     password = request.get_json(force=True)['password']
     if username is None or password is None:
-        make_response(jsonify({'error': 'Pas de mot de passe ou de nom d utilisateur'}), 403)
+        return make_response(jsonify({'error': 'Pas de mot de passe ou de nom d utilisateur'}), 403)
 
     numResult = managerDB.getUsersCollection().find({"user" : username}).count()
     if numResult == 0:
@@ -110,8 +119,17 @@ def api_getServiceContainer(idService,idClient):
 #image : le nom de l image
 #commande : la commande a executer
 #bindPorts : la liste des ports a binder > une liste d entiers > [122,455,789,445]
-@app.route('/Services/new/<name>/<nbReplicas>/<image>/<commande>/<bindPorts>')
-def api_addService(name,nbReplicas,image,commande,bindPorts):
+@app.route('/Services/new')
+def api_addService():
+    name = request.get_json(force=True)['name']
+    nbReplicas = request.get_json(force=True)['nbReplicas']
+    image = request.get_json(force=True)['image']
+    commande = request.get_json(force=True)['commande']
+    bindPorts = request.get_json(force=True)['bindPorts']
+
+    if name is None or nbReplicas is None or image is None or bindPorts is None:
+        return make_response(jsonify({'error': 'Un des arguments est manquant'}), 403)
+
     if 'username' in session:
         managerDB.insertService(session['username'],name,nbReplicas,image,commande,bindPorts)
         return  make_response(jsonify({'message': 'reussi'}), 202)
@@ -154,4 +172,16 @@ def verify_password(username, password):
             return False
 
 if __name__ == '__main__':
-    app.run()
+    #state = dockerSwarm.createSwarm()
+    #if state == True or state is None:
+    #    swarmId = dockerSwarm.getSwarmId()
+    #    swarmToken = dockerSwarm.getSwarmToken()
+    #    swarmDate = dockerSwarm.getSwarmCreatedDate()
+    #    managerDB.insertSwarm(swarmId,swarmToken,swarmDate)
+    #    print "docker swarm ID : "+swarmId
+    #    print "docker swarm Token : "+swarmToken
+    #    print "docker swarm created date :"+swarmDate
+    #    print "Initiation de dockerSwarm reussi"
+        app.run()
+    #else:
+    #    print "Un probleme avec l initiation du swarm"

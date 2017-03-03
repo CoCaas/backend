@@ -32,12 +32,12 @@ from pymongo import MongoClient
 #   services : [service names]
 #}
 
-def check_database_exist(client):
-    trouve = 'false'
-    for base in client.database_names():
-        if base == client[config['database']['name']]:
-            return trouve
-    return trouve
+#swarm {
+# id : ''
+# token : ''
+# createdDate : ''
+#}
+
 
 with open('config.json') as configFile:
     config = json.load(configFile)
@@ -59,6 +59,9 @@ def getServicesCollection():
 
 def getClientCollection():
     return db['clients']
+
+def getSwarmCollection():
+    return db['swarm']
 
 def insertUser(username,password):
     user = {
@@ -109,3 +112,19 @@ def insertClient(username,services):
     }
     clientId = getClientCollection().insert_one(client).inserted_id
     return clientId
+
+#il ne peut y avoir que un seul swarm a la fois
+def insertSwarm(id,token,createdDate):
+    swarm = {
+        "id" : id,
+        "token" : token,
+        "createdDate" : createdDate
+    }
+    numResult = getUsersCollection().count()
+    swarmId = 0
+    if numResult == 0:
+        swarmId = getSwarmCollection().insert_one(swarm).inserted_id
+    else:
+        getSwarmCollection().delete_many({})
+        swarmId = getSwarmCollection().insert_one(swarm).inserted_id
+    return swarmId
