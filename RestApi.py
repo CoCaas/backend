@@ -131,7 +131,15 @@ def api_addService():
         return make_response(jsonify({'error': 'Un des arguments est manquant'}), 403)
 
     if 'username' in session:
-        managerDB.insertService(session['username'],name,nbReplicas,image,commande,bindPorts)
+            if dockerSwarm.swarmExist() == True:
+                username = session['username']
+                serviceGlobalName = username+"."+name
+                for num in range(1,int(nbReplicas)):
+                    ServiceName = serviceGlobalName+"."+num
+                    serviceId = createService(ServiceName,image,commande)
+                    managerDB.insertService(username,serviceId,ServiceName,nbReplicas,image,commande,bindPorts)
+            else:
+                return make_response(jsonify({'error': 'Docker swar n as pas demarrer'}), 403)
         return  make_response(jsonify({'message': 'reussi'}), 202)
     else:
         return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
@@ -157,6 +165,21 @@ def api_getAllServices():
 def api_scaleService(nbReplicas,idService,idClient):
     return temp
 
+#Permet d'obtenir les informations concernant le swarm
+@app.route('/swarm',methods = ['GET'])
+def api_getSwarm():
+    if dockerSwarm.swarmExist() == True:
+        swarmId = dockerSwarm.getSwarmId()
+        swarmToken = dockerSwarm.getSwarmToken()
+        swarmDate = dockerSwarm.getSwarmCreatedDate()
+        swarm = {
+            "ID" : swarmId,
+            "swarmToken" : swarmToken,
+            "swarmDate" : swarmDate
+        }
+        return make_response(jsonify(swarm), 202)
+    else:
+        return  make_response(jsonify({'error': 'Pas de swarm sur ce serveur'}), 403)
 
 @auth.verify_password
 def verify_password(username, password):

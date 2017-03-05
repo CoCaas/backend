@@ -49,3 +49,52 @@ def getSwarmCreatedDate():
         return DockerInfo.get('CreatedAt')
     except AttributeError as err:
         return "Error: Vous devez initier un swarm"
+#verifie si un swarm exixt sur la machine
+def swarmExist():
+    DockerInfo = client.swarm.attrs
+    try:
+        DockerInfo.get('ID')
+        return True
+    except AttributeError as err:
+        return False
+#cree un service
+def createService(nom, imagee, commande):
+    try:
+        service = client.services.create(image = imagee, name=nom,command=commande)
+        return service.id
+    except docker.errors.APIError as err:
+        print err
+        return None
+#renvoie une lise d objet service
+def allServices():
+    try:
+        return client.services.list()
+    except docker.errors.APIError as err:
+        print err
+
+#informations about the service
+def serviceInfos(serviceId):
+    try:
+        service = client.services.get(serviceId)
+        print service.attrs
+    except docker.errors.APIError as err:
+        print err
+
+#delete a service knowing he's id
+def deleteServiceById(serviceId):
+    try:
+        service = client.services.get(serviceId)
+        service.remove()
+        return True
+    except docker.errors.APIError as err:
+        print err
+        return False
+#update the ports of a service
+#the list is in a format {80:90,100:20}
+def updateServicePort(serviceId,ListPort):
+    try:
+        service = client.services.get(serviceId)
+        endpoint = docker.types.EndpointSpec(mode="vip",ports = ListPort)
+        service.update(name = service.name,endpoint_spec = endpoint)
+    except docker.errors.APIError as err:
+        print err

@@ -92,9 +92,10 @@ def insertContainer(username,providerIP,serviceName):
     }
     containerId = getContainersCollection().insert_one(container).inserted_id
     return containerId
-def insertService(userId,serviceName,replicas,image,cmd, bindPorts):
+def insertService(userId,serviceId,serviceName,replicas,image,cmd, bindPorts):
     service = {
         "userId" : userId,
+        "serviceId": serviceId,
         "serviceName" : serviceName,
         "replicas" : replicas,
         "image" : image,
