@@ -119,7 +119,7 @@ def api_getServiceContainer(idService,idClient):
 #image : le nom de l image
 #commande : la commande a executer
 #bindPorts : la liste des ports a binder > une liste d entiers > [122,455,789,445]
-@app.route('/Services/new')
+@app.route('/Services/new',methods= ['POST'])
 def api_addService():
     name = request.get_json(force=True)['name']
     nbReplicas = request.get_json(force=True)['nbReplicas']
