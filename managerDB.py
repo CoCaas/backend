@@ -5,6 +5,8 @@ from pymongo import MongoClient
 #user {
 #    username :''
 #    password : ''
+#   firstname : ''
+#   lastname : ''
 #}
 
 #provider {
@@ -63,10 +65,12 @@ def getClientCollection():
 def getSwarmCollection():
     return db['swarm']
 
-def insertUser(username,password):
+def insertUser(username,password,firstname,lastname):
     user = {
         "user" : username,
-        "password" : password
+        "password" : password,
+        "firstname" : firstname,
+        "lastname" : lastname
     }
     userId = getUsersCollection().insert_one(user).inserted_id
     return userId

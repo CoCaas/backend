@@ -13,6 +13,8 @@
 #install flask : sudo pip install flask
 #pip install passlib
 #pip install Flask-HTTPAuth
+#pip install pymongo
+#pip install docker
 
 from flask import Flask, url_for, Response, jsonify, session, make_response,request
 from passlib.apps import custom_app_context as pwd_context
@@ -74,7 +76,7 @@ def api_connect():
             result =  managerDB.getUsersCollection().find_one({"user" : username})
             if pwd_context.verify(password, result['password']):
                 session['username'] = username
-                rep = make_response(jsonify({'success': 'vous etes connecte'}), 202)
+                rep = make_response(jsonify({'success': 'vous etes connecte', 'firstname':result['firstname'], 'lastname' : result['lastname']}), 202)
                 return rep
             else:
                 return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
@@ -95,6 +97,8 @@ def api_deconnect():
 def api_addUser():
     username = request.get_json(force=True)['username']
     password = request.get_json(force=True)['password']
+    lastname = request.get_json(force=True)['lastname']
+    firstname = request.get_json(force=True)['firstname']
     if username is None or password is None:
         return make_response(jsonify({'error': 'Pas de mot de passe ou de nom d utilisateur'}), 403)
 
@@ -102,7 +106,8 @@ def api_addUser():
     if numResult == 0:
         hash = pwd_context.encrypt(password)
         managerDB.insertUser(username,hash)
-        return  make_response(jsonify({'sucess': 'Utilisateur bien ajouter'}), 202)
+        session['username'] = username
+        return  make_response(jsonify({'sucess': 'Utilisateur bien ajouter', 'firstname':firstname, 'lastname' : lastname}), 202)
     else:
         return  make_response(jsonify({'error': 'cet utilisateur existe deja'}), 403)
 
@@ -193,7 +198,7 @@ def verify_password(username, password):
             return True
         else:
             return False
-
+def
 if __name__ == '__main__':
     #state = dockerSwarm.createSwarm()
     #if state == True or state is None:
