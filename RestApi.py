@@ -16,15 +16,71 @@
 #pip install pymongo
 #pip install docker
 
-from flask import Flask, url_for, Response, jsonify, session, make_response,request
+from flask import Flask, url_for, Response, jsonify, session, make_response,request, send_from_directory
 from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
 import json
 import managerDB
 import dockerSwarm
-app =Flask(__name__)
+app =Flask(__name__, static_url_path='')
 app.secret_key = 'de la merde'
 auth = HTTPBasicAuth()
+
+@app.route('/')
+def send_welcome_page():
+    return send_from_directory('web', 'index.html')
+
+@app.route('/js/<path:path>')
+def send_js(path):
+    return send_from_directory('web/js', path)
+
+@app.route('/css/<path:path>')
+def send_css(path):
+    return send_from_directory('web/css', path)
+
+@app.route('/fonts/<path:path>')
+def send_fonts(path):
+    return send_from_directory('web/fonts', path)
+
+@app.route('/about.html')
+def send_about_page():
+    return send_from_directory('web', 'about.html')
+
+@app.route('/client.html')
+def send_client_page():
+    return send_from_directory('web', 'client.html')
+
+@app.route('/provider.html')
+def send_provider_page():
+    return send_from_directory('web', 'provider.html')
+
+@app.route('/preferences.html')
+def send_preferences_page():
+    return send_from_directory('web', 'preferences.html')
+
+@app.route('/create-dialog.html')
+def send_create_dialog_page():
+    return send_from_directory('web', 'create-dialog.html')
+
+@app.route('/login-dialog.html')
+def send_login_dialog_page():
+    return send_from_directory('web', 'login-dialog.html')
+
+@app.route('/delete-docker-machine.html')
+def send_delete_docker_machine_page():
+    return send_from_directory('web', 'delete-docker-machine.html')
+
+@app.route('/demand-ressource.html')
+def send_demand_ressource_page():
+    return send_from_directory('web', 'demand-ressource.html')
+
+@app.route('/insert-docker-machine.html')
+def send_insert_docker_machine_page():
+    return send_from_directory('web', 'insert-docker-machine.html')
+
+@app.route('/users-containers.html')
+def send_users_containers_page():
+    return send_from_directory('web', 'users-containers.html')
 
 @app.route('/Containers/<idClient>', methods = ['POST'])
 def api_getAllContainer(idClient):
@@ -105,7 +161,7 @@ def api_addUser():
     numResult = managerDB.getUsersCollection().find({"user" : username}).count()
     if numResult == 0:
         hash = pwd_context.encrypt(password)
-        managerDB.insertUser(username,hash)
+        managerDB.insertUser(username,hash,firstname,lastname)
         session['username'] = username
         return  make_response(jsonify({'sucess': 'Utilisateur bien ajouter', 'firstname':firstname, 'lastname' : lastname}), 202)
     else:
@@ -124,7 +180,7 @@ def api_getServiceContainer(idService,idClient):
 #image : le nom de l image
 #commande : la commande a executer
 #bindPorts : la liste des ports a binder > une liste d entiers > [122,455,789,445]
-@app.route('/Services/new',methods= ['POST'])
+@app.route('/Services/new',methods = ['POST'])
 def api_addService():
     name = request.get_json(force=True)['name']
     nbReplicas = request.get_json(force=True)['nbReplicas']
@@ -136,15 +192,15 @@ def api_addService():
         return make_response(jsonify({'error': 'Un des arguments est manquant'}), 403)
 
     if 'username' in session:
-            if dockerSwarm.swarmExist() == True:
-                username = session['username']
-                serviceGlobalName = username+"."+name
-                for num in range(1,int(nbReplicas)):
-                    ServiceName = serviceGlobalName+"."+num
-                    serviceId = createService(ServiceName,image,commande)
-                    managerDB.insertService(username,serviceId,ServiceName,nbReplicas,image,commande,bindPorts)
-            else:
-                return make_response(jsonify({'error': 'Docker swar n as pas demarrer'}), 403)
+        if dockerSwarm.swarmExist() == True:
+            username = session['username']
+            serviceGlobalName = username+"."+name
+            for num in range(1,int(nbReplicas)):
+                ServiceName = serviceGlobalName+"."+num
+                serviceId = createService(ServiceName,image,commande)
+                managerDB.insertService(username,serviceId,ServiceName,nbReplicas,image,commande,bindPorts)
+        else:
+            return make_response(jsonify({'error': 'Docker swar n as pas demarrer'}), 403)
         return  make_response(jsonify({'message': 'reussi'}), 202)
     else:
         return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
@@ -198,7 +254,32 @@ def verify_password(username, password):
             return True
         else:
             return False
-def
+
+#cette fonction permet de supprimer tous les services
+@app.route('/services/delete',methods = ['POST'])
+def deleteAllServices():
+    serviceName = request.get_json(force=True)['nameservice']
+    serviceName = session['username']+"."+serviceName+".1"
+    result =  managerDB.getServicesCollection().find_one({"serviceName" : serviceName})
+
+    if result == None:
+        return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
+    else:
+        nbreplicas = int(result['replicas'])
+        for num in range(1,nbreplicas):
+            servicedb = managerDB.getServicesCollection().find_one({"serviceName" : serviceName+"."+num})
+            dockerSwarm.deleteServiceById(servicedb['serviceId'])
+        return make_response(jsonify({'success': 'aucun service de ce nom n existe'}), 403)
+#cette fonction permet de supprimer
+#cette fonction verifie si l utilisateur est deja connecte
+@app.route('/User/checkconnection')
+def checkconnection():
+    if 'username' in session:
+        result =  managerDB.getUsersCollection().find_one({"user" : session['username']})
+        return make_response(jsonify({'success': 'utilisateur connecte', 'firstname' : result['firstname'], 'lastname' : result['lastname']}), 202)
+    else:
+        return make_response(jsonify({'success': 'utilisateur non connecte'}), 403)
+
 if __name__ == '__main__':
     #state = dockerSwarm.createSwarm()
     #if state == True or state is None:
