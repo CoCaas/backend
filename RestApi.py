@@ -84,7 +84,6 @@ def send_users_containers_page():
 
 @app.route('/Containers/<idClient>', methods = ['POST'])
 def api_getAllContainer(idClient):
-
     return resp
 
 #retourne les informations d'un container specifique grace au idClient et au idContainer
@@ -166,7 +165,6 @@ def api_addUser():
         return  make_response(jsonify({'sucess': 'Utilisateur bien ajouter', 'firstname':firstname, 'lastname' : lastname}), 202)
     else:
         return  make_response(jsonify({'error': 'cet utilisateur existe deja'}), 403)
-
 
 
 #Permet d obtenir la liste des containers d'un service precis
@@ -269,10 +267,24 @@ def deleteAllServices():
         for num in range(1,nbreplicas):
             servicedb = managerDB.getServicesCollection().find_one({"serviceName" : serviceName+"."+num})
             dockerSwarm.deleteServiceById(servicedb['serviceId'])
-        return make_response(jsonify({'success': 'aucun service de ce nom n existe'}), 403)
-#cette fonction permet de supprimer
+            managerDB.getServicesCollection().delete_many({"serviceId": servicedb['serviceId']})
+        return make_response(jsonify({'success': 'Tous les services on ete supprimer'}), 202)
+
+#cette fonction permet de supprimer un service grace au nom
+@app.route('/services/delete',methods = ['POST'])
+def deleteService():
+    serviceName = request.get_json(force=True)['nameservicedocker']
+    serviceName = session['username']+"."+serviceName
+    servicedb   = managerDB.getServicesCollection().find_one({"serviceName" : serviceName})
+    if servicedb == None:
+        return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
+    else:
+        dockerSwarm.deleteServiceById(servicedb['serviceId'])
+        managerDB.getServicesCollection().delete_many({"serviceId": servicedb['serviceId']})
+        return make_response(jsonify({'success': 'Service bien supprimer'}), 202)
+
 #cette fonction verifie si l utilisateur est deja connecte
-@app.route('/User/checkconnection')
+@app.route('/User/checkconnection',methods = ['POST'])
 def checkconnection():
     if 'username' in session:
         result =  managerDB.getUsersCollection().find_one({"user" : session['username']})
