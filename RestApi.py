@@ -42,45 +42,9 @@ def send_css(path):
 def send_fonts(path):
     return send_from_directory('web/fonts', path)
 
-@app.route('/about.html')
-def send_about_page():
-    return send_from_directory('web', 'about.html')
-
-@app.route('/client.html')
-def send_client_page():
-    return send_from_directory('web', 'client.html')
-
-@app.route('/provider.html')
-def send_provider_page():
-    return send_from_directory('web', 'provider.html')
-
-@app.route('/preferences.html')
-def send_preferences_page():
-    return send_from_directory('web', 'preferences.html')
-
-@app.route('/create-dialog.html')
-def send_create_dialog_page():
-    return send_from_directory('web', 'create-dialog.html')
-
-@app.route('/login-dialog.html')
-def send_login_dialog_page():
-    return send_from_directory('web', 'login-dialog.html')
-
-@app.route('/delete-docker-machine.html')
-def send_delete_docker_machine_page():
-    return send_from_directory('web', 'delete-docker-machine.html')
-
-@app.route('/demand-ressource.html')
-def send_demand_ressource_page():
-    return send_from_directory('web', 'demand-ressource.html')
-
-@app.route('/insert-docker-machine.html')
-def send_insert_docker_machine_page():
-    return send_from_directory('web', 'insert-docker-machine.html')
-
-@app.route('/users-containers.html')
-def send_users_containers_page():
-    return send_from_directory('web', 'users-containers.html')
+@app.route('/html/<path:path>')
+def send_html(path):
+    return send_from_directory('web/html', path)
 
 @app.route('/Containers/<idClient>', methods = ['POST'])
 def api_getAllContainer(idClient):
@@ -97,7 +61,7 @@ def api_getContainer(idClient, idContainer):
 #nbMemory : le nombre de memoire a alouer
 #nbStockage: le nombre de disque a alouer
 @app.route('/Providers/new', methods = ['POST'])
-def api_setProvider(nbCPU,nbMemory,nbStockage):
+def api_setProvider():
     nbCPU = request.get_json(force=True)['nbCPU']
     nbMemory = request.get_json(force=True)['nbMemory']
     nbStockage = request.get_json(force=True)['nbStockage']
@@ -111,6 +75,14 @@ def api_setProvider(nbCPU,nbMemory,nbStockage):
     else:
         return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
 
+#permet de supprimer un provider
+@app.route('/Provider/delete',methods =['POST'])
+def api_deleteProvider():
+    if 'username' in session:
+        managerDB.getProviderCollection().delete_many({'username' : session['username'] })
+        return  make_response(jsonify({'message': 'reussi'}), 202)
+    else:
+        return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
 
 #permet de se connecter
 #username: le nom d'utilisateur
@@ -129,6 +101,8 @@ def api_connect():
             return make_response(jsonify({'error': 'cet utilisateur n existe pas'}), 403)
         else:
             result =  managerDB.getUsersCollection().find_one({"user" : username})
+            print result['password']
+            print result
             if pwd_context.verify(password, result['password']):
                 session['username'] = username
                 rep = make_response(jsonify({'success': 'vous etes connecte', 'firstname':result['firstname'], 'lastname' : result['lastname']}), 202)
@@ -145,6 +119,22 @@ def api_deconnect():
     else:
         return  make_response(jsonify({'error': 'vous n etes  pas connecte'}), 403)
 
+#permet de modifier le mot de passe de l utilisateur
+@app.route('/User/modifypassword', methods = ['POST'])
+def api_modify_user_password():
+    if 'username' in session:
+        newpassword = request.get_json(force=True)['newpassword']
+        oldpassword = request.get_json(force=True)['oldpassword']
+        result =  managerDB.getUsersCollection().find_one({"user" : session['username']})
+        if pwd_context.verify(oldpassword, result['password']):
+            hash1 = pwd_context.encrypt(newpassword)
+            result =  managerDB.getUsersCollection().update( { "user": session['username']},  { "$set": {"password" : hash1}}   )
+            rep = make_response(jsonify({'success': 'Votre mot de passe a ete modifier'}), 202)
+            return rep
+        else:
+            return make_response(jsonify({'error': 'Ancien mot de passe incorrect'}), 403)
+    else:
+        return  make_response(jsonify({'error': 'Vous devez etre connecter'}), 403)
 #permet d'ajouter un nouvel utilisateur
 #username: le nom d'utilisateur
 #hash : le mot de passe de l'utilisateur
@@ -267,7 +257,7 @@ def deleteAllServices():
         for num in range(1,nbreplicas):
             servicedb = managerDB.getServicesCollection().find_one({"serviceName" : serviceName+"."+num})
             dockerSwarm.deleteServiceById(servicedb['serviceId'])
-            managerDB.getServicesCollection().delete_many({"serviceId": servicedb['serviceId']})
+            managerDB.getServicesCollection().delete_one({"serviceId": servicedb['serviceId']})
         return make_response(jsonify({'success': 'Tous les services on ete supprimer'}), 202)
 
 #cette fonction permet de supprimer un service grace au nom
@@ -280,7 +270,7 @@ def deleteService():
         return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
     else:
         dockerSwarm.deleteServiceById(servicedb['serviceId'])
-        managerDB.getServicesCollection().delete_many({"serviceId": servicedb['serviceId']})
+        managerDB.getServicesCollection().delete_one({"serviceId": servicedb['serviceId']})
         return make_response(jsonify({'success': 'Service bien supprimer'}), 202)
 
 #cette fonction verifie si l utilisateur est deja connecte
