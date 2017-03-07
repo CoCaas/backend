@@ -28,7 +28,7 @@ auth = HTTPBasicAuth()
 
 @app.route('/')
 def send_welcome_page():
-    return send_from_directory('web', 'index.html')
+    return send_from_directory('web/html', 'index.html')
 
 @app.route('/js/<path:path>')
 def send_js(path):
