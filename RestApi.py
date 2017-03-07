@@ -60,7 +60,7 @@ def api_getContainer(idClient, idContainer):
 #nbCPU : le nombre de cpu a alouer
 #nbMemory : le nombre de memoire a alouer
 #nbStockage: le nombre de disque a alouer
-@app.route('/Providers/new', methods = ['POST'])
+@app.route('/Provider/new', methods = ['POST'])
 def api_setProvider():
     nbCPU = request.get_json(force=True)['nbCPU']
     nbMemory = request.get_json(force=True)['nbMemory']
@@ -71,9 +71,17 @@ def api_setProvider():
 
     if 'username' in session:
         managerDB.insertProvider(session['username'],nbCPU,nbMemory,nbStockage)
-        return  make_response(jsonify({'message': 'reussi'}), 202)
+        return  make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage }), 202)
     else:
         return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
+
+@app.route('/Provider', methods = ['POST'])
+def api_getProvider():
+    if 'username' in session:
+        managerDB.getProviderCollection().find_one( {"userId" : session['username']} )
+        return  make_response(jsonify({'message': 'reussi'}), 202)
+    else:
+        return  make_response ( jsonify({'error': 'veuillez vous connecter svp'}), 403 )
 
 #permet de supprimer un provider
 @app.route('/Provider/delete',methods =['POST'])
@@ -193,6 +201,52 @@ def api_addService():
     else:
         return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
     return temp
+
+#Cette fonction renvoie la liste des services
+#ip
+#port
+#nom de la machine
+#nom des containers
+#image
+#commande
+#date de creation
+#status
+@app.route('/User/services', methods =['POST'])
+def getAllUserServices():
+    if 'username' in session:
+        if dockerSwarm.swarmExist() == True:
+            result = managerDB.getServicesCollection().find({"userId" : session['username']})
+            if result.count() == 0:
+                make_response(jsonify({}), 202)
+            else:
+                infoJson = "{"
+                for num in range(1,int(result.count())):
+                    serviceId = result[num]['serviceId']
+                    service = dockerSwarm.getServiceById(serviceId)
+                    serviceInfo = service.attrs
+                    tasks = dockerSwarm.getServiceTasks(serviceId)
+                    nodeId = tasks[0]['nodeID']
+                    nodeInfo = getNode(nodeId).attrs
+
+                    ports = result['bindPorts']
+                    nomMachine = nodeInfo['Hostname']
+                    ipMachine =nodeInfo['Status']['Addr']
+                    NomService   = serviceInfo['Name']
+                    nomImage = serviceInfo['TaskTemplate']['ContainerSpec']['Image']
+                    commade =  serviceInfo['Command']
+                    datecreation = serviceInfo['CreatedAt']
+                    status = serviceInfo['UpdateStatus']
+
+                    Jsondata = ' {"nodeId" : "'+nodeId+'", "ports" : "'+ports+'", "ipMachine" : "'+NomService+'","nomImage" : "'+nomImage+'","commande" : "'+commande+'", "datecreation" : "'+datecreation+'", "status" :"'+status+'}'
+                    infoJson = infoJson + Jsondata
+                infoJson = infoJson+"}"
+                return make_response(jsonify({'services': infoJson}), 403)
+        else:
+            return make_response(jsonify({'error': 'Docker swar n as pas demarrer'}), 403)
+        return  make_response(jsonify({'message': 'reussi'}), 202)
+    else:
+        return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
+
 
 #Permet de supprimer tous les services lies a un client
 @app.route('/Services/delete/<idClient>')

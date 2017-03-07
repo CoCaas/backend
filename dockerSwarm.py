@@ -79,7 +79,11 @@ def serviceInfos(serviceId):
         print service.attrs
     except docker.errors.APIError as err:
         print err
-
+def getServiceById(serviceId):
+    try:
+        return client.services.get(serviceId)
+    except docker.errors.APIError as err:
+        print err
 #delete a service knowing he's id
 def deleteServiceById(serviceId):
     try:
@@ -98,3 +102,20 @@ def updateServicePort(serviceId,ListPort):
         service.update(name = service.name,endpoint_spec = endpoint)
     except docker.errors.APIError as err:
         print err
+
+def getServiceTasks(serviceId):
+    try:
+        return getServiceById(serviceId).tasks({"desired-state" : "running"})
+    except docker.errors.APIError as err:
+        print err
+
+def getNode(nodeId):
+    try:
+        return client.nodes.get(nodeId)
+    except docker.errors.APIError as err:
+        print err
+#createSwarm()
+#createService("nom1", "alpine", "ping google.com")
+#serviceInfos("o1ou4dgiuhnx")
+#print getServiceById("o1ou4dgiuhnx").tasks({"desired-state" : "running"})
+print client.nodes.get('u22noewlfj').attrs
