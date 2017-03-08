@@ -15,7 +15,7 @@
 #pip install Flask-HTTPAuth
 #pip install pymongo
 #pip install docker
-
+#TODO voir avec Quentin si on peut inclure le nodeID dans provider
 from flask import Flask, url_for, Response, jsonify, session, make_response,request, send_from_directory
 from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
@@ -65,16 +65,25 @@ def api_setProvider():
     nbCPU = request.get_json(force=True)['nbCPU']
     nbMemory = request.get_json(force=True)['nbMemory']
     nbStockage = request.get_json(force=True)['nbStockage']
+    username = request.get_json(force=True)['username']
+    password = request.get_json(force=True)['password']
+    nodeID   = request.get_json(force=True)['nodeID']
 
-    if nbCPU is None or nbMemory is None or nbStockage is None:
+    if nbCPU is None or nbMemory is None or nbStockage is None or username is None or password is None or nodeID is None:
         return  make_response(jsonify({'error': 'un argument est manquant'}), 403)
 
-    if 'username' in session:
-        managerDB.insertProvider(session['username'],nbCPU,nbMemory,nbStockage)
-        return  make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage }), 202)
+    numResult = managerDB.getUsersCollection().find({"user" : username}).count()
+    if numResult == 0:
+        return make_response(jsonify({'error': 'cet utilisateur n existe pas'}), 403)
     else:
-        return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
+        result =  managerDB.getUsersCollection().find_one({"user" : username})
+        if pwd_context.verify(password, result['password']):
+            managerDB.insertProvider(username,nbCPU,nbMemory,nbStockage,nodeID)
+            return make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage, 'nodeID' : nodeID }), 202)
+        else:
+            return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
 
+#TODO Permet de recuperer les informations d'un noeud grace à l'id
 @app.route('/Provider', methods = ['POST'])
 def api_getProvider():
     if 'username' in session:
@@ -86,11 +95,42 @@ def api_getProvider():
 #permet de supprimer un provider
 @app.route('/Provider/delete',methods =['POST'])
 def api_deleteProvider():
-    if 'username' in session:
-        managerDB.getProviderCollection().delete_many({'username' : session['username'] })
-        return  make_response(jsonify({'message': 'reussi'}), 202)
+    username = request.get_json(force=True)['username']
+    password = request.get_json(force=True)['password']
+
+    if username is None or password is None:
+        return  make_response(jsonify({'error': 'un argument est manquant'}), 403)
+
+    numResult = managerDB.getUsersCollection().find({"user" : username}).count()
+    if numResult == 0:
+        return make_response(jsonify({'error': 'cet utilisateur n existe pas'}), 403)
     else:
-        return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
+        result =  managerDB.getUsersCollection().find_one({"user" : username})
+        if pwd_context.verify(password, result['password']):
+            managerDB.getProviderCollection().delete_many({'username' :username})
+            return make_response(jsonify({'message': 'reussi'}), 202)
+        else:
+            return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
+
+#Permet de verifier que un utilisateur existe
+@app.route('/User/check',methods =['POST'])
+def api_checkUser():
+    username = request.get_json(force=True)['username']
+    password = request.get_json(force=True)['password']
+
+    if username is None or password is None:
+        return  make_response(jsonify({'error': 'un argument est manquant'}), 403)
+
+    numResult = managerDB.getUsersCollection().find({"user" : username}).count()
+    if numResult == 0:
+        return make_response(jsonify({'error': 'cet utilisateur n existe pas'}), 403)
+    else:
+        result =  managerDB.getUsersCollection().find_one({"user" : username})
+        if pwd_context.verify(password, result['password']):
+            return make_response(jsonify({'message': 'Utilisateur existe'}), 202)
+        else:
+            return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
+
 
 #permet de se connecter
 #username: le nom d'utilisateur
@@ -109,8 +149,6 @@ def api_connect():
             return make_response(jsonify({'error': 'cet utilisateur n existe pas'}), 403)
         else:
             result =  managerDB.getUsersCollection().find_one({"user" : username})
-            print result['password']
-            print result
             if pwd_context.verify(password, result['password']):
                 session['username'] = username
                 rep = make_response(jsonify({'success': 'vous etes connecte', 'firstname':result['firstname'], 'lastname' : result['lastname']}), 202)
