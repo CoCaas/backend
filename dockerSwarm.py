@@ -116,6 +116,6 @@ def getNode(nodeId):
         print err
 #createSwarm()
 #createService("nom1", "alpine", "ping google.com")
-#serviceInfos("o1ou4dgiuhnx")
-#print getServiceById("o1ou4dgiuhnx").tasks({"desired-state" : "running"})
-print client.nodes.get('u22noewlfj').attrs
+#serviceInfos("8xe7fcuyz9we")
+#print getServiceById("8xe7fcuyz9we").tasks({"desired-state" : "running"})
+#print client.nodes.get('pxdp401x0x3us01bi1do84auh').attrs['Description']

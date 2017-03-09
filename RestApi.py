@@ -46,15 +46,6 @@ def send_fonts(path):
 def send_html(path):
     return send_from_directory('web/html', path)
 
-@app.route('/Containers/<idClient>', methods = ['POST'])
-def api_getAllContainer(idClient):
-    return resp
-
-#retourne les informations d'un container specifique grace au idClient et au idContainer
-@app.route('/Containers/<idClient>/<idContainer>', methods = ['POST'])
-def api_getContainer(idClient, idContainer):
-
-    return resp
 
 #Permet d enregistrer provider
 #nbCPU : le nombre de cpu a alouer
@@ -67,9 +58,9 @@ def api_setProvider():
     nbStockage = request.get_json(force=True)['nbStockage']
     username = request.get_json(force=True)['username']
     password = request.get_json(force=True)['password']
-    nodeID   = request.get_json(force=True)['nodeID']
+    nodeIP   = request.remote_addr
 
-    if nbCPU is None or nbMemory is None or nbStockage is None or username is None or password is None or nodeID is None:
+    if nbCPU is None or nbMemory is None or nbStockage is None or username is None or password is None or nodeIP is None:
         return  make_response(jsonify({'error': 'un argument est manquant'}), 403)
 
     numResult = managerDB.getUsersCollection().find({"user" : username}).count()
@@ -78,12 +69,12 @@ def api_setProvider():
     else:
         result =  managerDB.getUsersCollection().find_one({"user" : username})
         if pwd_context.verify(password, result['password']):
-            managerDB.insertProvider(username,nbCPU,nbMemory,nbStockage,nodeID)
-            return make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage, 'nodeID' : nodeID }), 202)
+            managerDB.insertProvider(username,nbCPU,nbMemory,nbStockage,nodeIP)
+            return make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage, 'nodeIP' : nodeIP }), 202)
         else:
             return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
 
-#TODO Permet de recuperer les informations d'un noeud grace à l'id
+#TODO Permet de recuperer les informations d un noeud grace a l id
 @app.route('/Provider', methods = ['POST'])
 def api_getProvider():
     if 'username' in session:
@@ -181,6 +172,8 @@ def api_modify_user_password():
             return make_response(jsonify({'error': 'Ancien mot de passe incorrect'}), 403)
     else:
         return  make_response(jsonify({'error': 'Vous devez etre connecter'}), 403)
+
+
 #permet d'ajouter un nouvel utilisateur
 #username: le nom d'utilisateur
 #hash : le mot de passe de l'utilisateur
@@ -204,9 +197,10 @@ def api_addUser():
 
 
 #Permet d obtenir la liste des containers d'un service precis
-@app.route('/Services/Container/<idService>/<idClient>')
-def api_getServiceContainer(idService,idClient):
-    return temp
+@app.route('/Services/Container')
+def api_getServiceContainer():
+    print "adresse IP "+request.remote_addr
+
 
 #Permet d inserer un nouveau service
 #name : le nom du services
@@ -228,10 +222,10 @@ def api_addService():
     if 'username' in session:
         if dockerSwarm.swarmExist() == True:
             username = session['username']
-            serviceGlobalName = username+"."+name
-            for num in range(1,int(nbReplicas)):
-                ServiceName = serviceGlobalName+"."+num
-                serviceId = createService(ServiceName,image,commande)
+            serviceGlobalName = username+"-"+name
+            for num in range(1,int(nbReplicas) + 1):
+                ServiceName = serviceGlobalName+"-"+str(num)
+                serviceId = dockerSwarm.createService(ServiceName,image,commande)
                 managerDB.insertService(username,serviceId,ServiceName,nbReplicas,image,commande,bindPorts)
         else:
             return make_response(jsonify({'error': 'Docker swar n as pas demarrer'}), 403)
@@ -249,7 +243,7 @@ def api_addService():
 #commande
 #date de creation
 #status
-@app.route('/User/services', methods =['POST'])
+@app.route('/User/services', methods =['GET'])
 def getAllUserServices():
     if 'username' in session:
         if dockerSwarm.swarmExist() == True:
@@ -257,28 +251,30 @@ def getAllUserServices():
             if result.count() == 0:
                 make_response(jsonify({}), 202)
             else:
-                infoJson = "{"
-                for num in range(1,int(result.count())):
+                JsondataGlobal =[]
+                for num in range(0,int(result.count())):
                     serviceId = result[num]['serviceId']
-                    service = dockerSwarm.getServiceById(serviceId)
-                    serviceInfo = service.attrs
-                    tasks = dockerSwarm.getServiceTasks(serviceId)
-                    nodeId = tasks[0]['nodeID']
-                    nodeInfo = getNode(nodeId).attrs
+                    if serviceId is not None:
+                        service = dockerSwarm.getServiceById(serviceId)
+                        if service is not None:
+                            Jsondata = {}
+                            serviceInfo = service.attrs
+                            tasks = dockerSwarm.getServiceTasks(serviceId)
+                            Jsondata['nodeId'] = tasks[0]['NodeID']
+                            nodeInfo = dockerSwarm.getNode(tasks[0]['NodeID']).attrs
 
-                    ports = result['bindPorts']
-                    nomMachine = nodeInfo['Hostname']
-                    ipMachine =nodeInfo['Status']['Addr']
-                    NomService   = serviceInfo['Name']
-                    nomImage = serviceInfo['TaskTemplate']['ContainerSpec']['Image']
-                    commade =  serviceInfo['Command']
-                    datecreation = serviceInfo['CreatedAt']
-                    status = serviceInfo['UpdateStatus']
+                            Jsondata['ports'] = result[num]['bindPorts']
+                            Jsondata['nomMachine'] = nodeInfo['Description']['Hostname']
+                            Jsondata['ipMachine'] = nodeInfo['Status']['Addr']
+                            Jsondata['NomService'] = serviceInfo['Spec']['Name']
+                            Jsondata['nomImage'] = serviceInfo['Spec']['TaskTemplate']['ContainerSpec']['Image']
+                            Jsondata['commande'] = serviceInfo['Spec']['TaskTemplate']['ContainerSpec']['Command']
+                            Jsondata['datecreation'] = serviceInfo['CreatedAt']
+                            Jsondata['status'] = serviceInfo['UpdateStatus']
+                            JsondataGlobal.append(Jsondata)
 
-                    Jsondata = ' {"nodeId" : "'+nodeId+'", "ports" : "'+ports+'", "ipMachine" : "'+NomService+'","nomImage" : "'+nomImage+'","commande" : "'+commande+'", "datecreation" : "'+datecreation+'", "status" :"'+status+'}'
-                    infoJson = infoJson + Jsondata
-                infoJson = infoJson+"}"
-                return make_response(jsonify({'services': infoJson}), 403)
+                infoJson = json.dumps(JsondataGlobal)
+                return make_response(jsonify({'services': JsondataGlobal}), 202)
         else:
             return make_response(jsonify({'error': 'Docker swar n as pas demarrer'}), 403)
         return  make_response(jsonify({'message': 'reussi'}), 202)
@@ -336,33 +332,57 @@ def verify_password(username, password):
             return False
 
 #cette fonction permet de supprimer tous les services
-@app.route('/services/delete',methods = ['POST'])
-def deleteAllServices():
+@app.route('/Services/delete',methods = ['POST'])
+def deleteAllContainers():
     serviceName = request.get_json(force=True)['nameservice']
-    serviceName = session['username']+"."+serviceName+".1"
-    result =  managerDB.getServicesCollection().find_one({"serviceName" : serviceName})
+    serviceName = session['username']+"-"+serviceName
+    result =  managerDB.getServicesCollection().find({"userId" : session['username']})
 
     if result == None:
         return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
     else:
-        nbreplicas = int(result['replicas'])
-        for num in range(1,nbreplicas):
-            servicedb = managerDB.getServicesCollection().find_one({"serviceName" : serviceName+"."+num})
-            dockerSwarm.deleteServiceById(servicedb['serviceId'])
-            managerDB.getServicesCollection().delete_one({"serviceId": servicedb['serviceId']})
+
+        for num in range(0,result.count()):
+            if serviceName in result[num]['serviceName']:
+                dockerSwarm.deleteServiceById(result[num]['serviceId'])
+                managerDB.getServicesCollection().delete_one({"serviceId": result[num]['serviceId']})
+        return make_response(jsonify({'success': 'Tous les services on ete supprimer'}), 202)
+
+#cette fonction permet de supprimer tous les services
+@app.route('/Services/alldelete',methods = ['POST'])
+def deleteAllServices():
+    serviceName = session['username']+"-"+serviceName
+    result =  managerDB.getServicesCollection().find({"userId" : session['username']})
+
+    if result == None:
+        return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
+    else:
+
+        for num in range(0,result.count()):
+            dockerSwarm.deleteServiceById(result[num]['serviceId'])
+            managerDB.getServicesCollection().delete_one({"serviceId": result[num]['serviceId']})
         return make_response(jsonify({'success': 'Tous les services on ete supprimer'}), 202)
 
 #cette fonction permet de supprimer un service grace au nom
-@app.route('/services/delete',methods = ['POST'])
+@app.route('/Containers/delete',methods = ['POST'])
 def deleteService():
     serviceName = request.get_json(force=True)['nameservicedocker']
-    serviceName = session['username']+"."+serviceName
+    serviceName = session['username']+"-"+serviceName
     servicedb   = managerDB.getServicesCollection().find_one({"serviceName" : serviceName})
+    #managerDB.getServicesCollection().update( { "user": session['username']},  { "$set": {"password" : hash1}}   )
     if servicedb == None:
         return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
     else:
         dockerSwarm.deleteServiceById(servicedb['serviceId'])
         managerDB.getServicesCollection().delete_one({"serviceId": servicedb['serviceId']})
+
+        result =  managerDB.getServicesCollection().find({"userId" : session['username']})
+        if result == None:
+            print "Plus de service"
+        else:
+            for num in range(0,result.count()):
+                if serviceName in result[num]['serviceName']:
+                    managerDB.getServicesCollection().update( { "serviceName": result[num]['serviceName']},  { "$inc": {"replicas" : int(-1)}}   )
         return make_response(jsonify({'success': 'Service bien supprimer'}), 202)
 
 #cette fonction verifie si l utilisateur est deja connecte
@@ -375,16 +395,20 @@ def checkconnection():
         return make_response(jsonify({'success': 'utilisateur non connecte'}), 403)
 
 if __name__ == '__main__':
-    #state = dockerSwarm.createSwarm()
-    #if state == True or state is None:
-    #    swarmId = dockerSwarm.getSwarmId()
-    #    swarmToken = dockerSwarm.getSwarmToken()
-    #    swarmDate = dockerSwarm.getSwarmCreatedDate()
-    #    managerDB.insertSwarm(swarmId,swarmToken,swarmDate)
-    #    print "docker swarm ID : "+swarmId
-    #    print "docker swarm Token : "+swarmToken
-    #    print "docker swarm created date :"+swarmDate
-    #    print "Initiation de dockerSwarm reussi"
+    if(dockerSwarm.swarmExist() == False):
+        state = dockerSwarm.createSwarm()
+        if state == True or state is None:
+            swarmId = dockerSwarm.getSwarmId()
+            swarmToken = dockerSwarm.getSwarmToken()
+            swarmDate = dockerSwarm.getSwarmCreatedDate()
+            managerDB.insertSwarm(swarmId,swarmToken,swarmDate)
+            print "docker swarm ID : "+swarmId
+            print "docker swarm Token : "+swarmToken
+            print "docker swarm created date :"+swarmDate
+            print "Initiation de dockerSwarm reussi"
+            app.run()
+        else:
+            print "Un probleme avec l initiation du swarm"
+    else:
+        print "Utilisation du docker existant"
         app.run()
-    #else:
-    #    print "Un probleme avec l initiation du swarm"
