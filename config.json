@@ -2,6 +2,9 @@
     "database":{
         "host":"localhost",
         "port":"27017",
-        "name":"db" 
+        "name":"db"
+    },
+    "swarm":{
+        "interface_addr" : "wlan0"
     }
 }

@@ -5,6 +5,8 @@ from pymongo import MongoClient
 #user {
 #    username :''
 #    password : ''
+#   firstname : ''
+#   lastname : ''
 #}
 
 #provider {
@@ -32,12 +34,12 @@ from pymongo import MongoClient
 #   services : [service names]
 #}
 
-def check_database_exist(client):
-    trouve = 'false'
-    for base in client.database_names():
-        if base == client[config['database']['name']]:
-            return trouve
-    return trouve
+#swarm {
+# id : ''
+# token : ''
+# createdDate : ''
+#}
+
 
 with open('config.json') as configFile:
     config = json.load(configFile)
@@ -60,20 +62,27 @@ def getServicesCollection():
 def getClientCollection():
     return db['clients']
 
-def insertUser(username,password):
+def getSwarmCollection():
+    return db['swarm']
+
+def insertUser(username,password,firstname,lastname):
     user = {
         "user" : username,
-        "password" : password
+        "password" : password,
+        "firstname" : firstname,
+        "lastname" : lastname
     }
-    getUsersCollection().json.insert(user)
+    userId = getUsersCollection().insert_one(user).inserted_id
+    return userId
 
 
-def insertProvider(userId, cpuLimit,memorylimit,storageLimit):
+def insertProvider(userId, cpuLimit,memorylimit,storageLimit,nodeID):
     provider = {
-        "username" : userId,
+        "userId" : userId,
         "cpuLimit" : cpuLimit,
         "memorylimit" : memorylimit,
-        "storageLimit" : storageLimit
+        "storageLimit" : storageLimit,
+        "nodeID"      : nodeID
     }
 
     providerId = getProviderCollection().insert_one(provider).inserted_id
@@ -86,15 +95,19 @@ def insertContainer(username,providerIP,serviceName):
         "providerIP" : providerIP,
         "serviceName" : serviceName
     }
-    containerId = getContainersCollection().insert_one(container).insert_id
+    containerId = getContainersCollection().insert_one(container).inserted_id
     return containerId
-def insertService(serviceName,replicas, bindPorts):
+def insertService(userId,serviceId,serviceName,replicas,image,cmd, bindPorts):
     service = {
+        "userId" : userId,
+        "serviceId": serviceId,
         "serviceName" : serviceName,
         "replicas" : replicas,
+        "image" : image,
+        "cmd" : cmd,
         "bindPorts" : bindPorts
     }
-    serviceId = getServicesCollection().insert_one(service).insert_id
+    serviceId = getServicesCollection().insert_one(service).inserted_id
 
     return serviceId
 
@@ -103,5 +116,21 @@ def insertClient(username,services):
         "username" : username,
         "services" : services
     }
-    clientId = getClientCollection().insert_one(client).insert_id
+    clientId = getClientCollection().insert_one(client).inserted_id
     return clientId
+
+#il ne peut y avoir que un seul swarm a la fois
+def insertSwarm(id,token,createdDate):
+    swarm = {
+        "id" : id,
+        "token" : token,
+        "createdDate" : createdDate
+    }
+    numResult = getUsersCollection().count()
+    swarmId = 0
+    if numResult == 0:
+        swarmId = getSwarmCollection().insert_one(swarm).inserted_id
+    else:
+        getSwarmCollection().delete_many({})
+        swarmId = getSwarmCollection().insert_one(swarm).inserted_id
+    return swarmId
