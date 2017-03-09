@@ -89,27 +89,25 @@ def insertProvider(userId, cpuLimit,memorylimit,storageLimit,nodeIP):
 
     return providerId
 
-def insertContainer(username,providerIP,serviceName):
-    container = {
-        "username" : username,
-        "providerIP" : providerIP,
+def insertService(userId,replicas,serviceName):
+    service = {
+        "userId" : userId,
+        "replicas" : replicas,
         "serviceName" : serviceName
+    }
+    ServiceDBId = getServicesCollection().insert_one(service).inserted_id
+    return ServiceDBId
+def insertContainer(containerId,serviceId,ContainerName,image,cmd, bindPorts):
+    container = {
+        "containerId": containerId,
+        "ContainerName" : ContainerName,
+        "image" : image,
+        "cmd" : cmd,
+        "bindPorts" : bindPorts,
+        "serviceId" : serviceId
     }
     containerId = getContainersCollection().insert_one(container).inserted_id
     return containerId
-def insertService(userId,serviceId,serviceName,replicas,image,cmd, bindPorts):
-    service = {
-        "userId" : userId,
-        "serviceId": serviceId,
-        "serviceName" : serviceName,
-        "replicas" : replicas,
-        "image" : image,
-        "cmd" : cmd,
-        "bindPorts" : bindPorts
-    }
-    serviceId = getServicesCollection().insert_one(service).inserted_id
-
-    return serviceId
 
 def insertClient(username,services):
     client = {
@@ -134,3 +132,6 @@ def insertSwarm(id,token,createdDate):
         getSwarmCollection().delete_many({})
         swarmId = getSwarmCollection().insert_one(swarm).inserted_id
     return swarmId
+
+#getServicesCollection().delete_many({})
+#getContainersCollection().delete_many({})
