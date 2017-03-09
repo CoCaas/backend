@@ -53,8 +53,11 @@ def getSwarmCreatedDate():
 def swarmExist():
     DockerInfo = client.swarm.attrs
     try:
-        DockerInfo.get('ID')
-        return True
+
+        if DockerInfo.get('ID') is not None:
+            return True
+        else:
+            return False
     except AttributeError as err:
         return False
 #cree un service
