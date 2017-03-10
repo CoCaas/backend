@@ -362,8 +362,8 @@ def deleteAllContainers():
                     containerId = result[num]['_id']
                     containersBD = managerDB.getContainersCollection().find({"containerId" : containerId })
                     for numContainer in range(0,containersBD.count()):
-                        dockerSwarm.deleteServiceById(containersBD[numContainer]['serviceId'])
-                        managerDB.getContainersCollection().delete_many({"serviceId": containersBD[numContainer]['serviceId']})
+                        dockerSwarm.deleteServiceById(containersBD[0]['serviceId'])
+                        managerDB.getContainersCollection().delete_one({"serviceId": containersBD[0]['serviceId']})
                         managerDB.getServicesCollection().delete_one({"_id": containerId})
         except IndexError as err:
             print err
