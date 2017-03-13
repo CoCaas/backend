@@ -361,7 +361,9 @@ def api_scaleService():
     if newReplicas > oldReplicas:
         # add newReplicas - oldReplicas containers
         nbAdded = 0
-        cntnrWithMaxCounter = managerDB.getContainersCollection().find({'containerId': serv['_id']}).sort('ContainerName', pymongo.DESCENDING).limit(1)
+        cursr = managerDB.getContainersCollection().find({'containerId': serv['_id']}).sort('ContainerName', pymongo.DESCENDING).limit(1)
+        for c in cursr:
+            cntnrWithMaxCounter = c
         splittedCntnrName = cntnrWithMaxCounter['ContainerName'].split('-')
         maxCounter = int(splittedCntnrName[len(splittedCntnrName) - 1])
         for i in range(newReplicas - oldReplicas):
