@@ -223,12 +223,18 @@ def api_addService():
         if dockerSwarm.swarmExist() == True:
             username = session['username']
             serviceGlobalName = name
-            containerId = managerDB.insertService(username,nbReplicas,name)
-            print containerId
-            for num in range(1,int(nbReplicas) + 1):
-                ServiceName =username+"-"+ serviceGlobalName+"-"+str(num)
-                serviceId = dockerSwarm.createService(ServiceName,image,commande)
-                managerDB.insertContainer(containerId,serviceId,serviceGlobalName+"-"+str(num),image,commande,bindPorts)
+
+            result =  managerDB.getServicesCollection().find({"userId" : session['username'], "serviceName" : name})
+
+            if result.count() == 0:
+                containerId = managerDB.insertService(username,nbReplicas,name)
+                print containerId
+                for num in range(1,int(nbReplicas) + 1):
+                    ServiceName =username+"-"+ serviceGlobalName+"-"+str(num)
+                    serviceId = dockerSwarm.createService(ServiceName,image,commande)
+                    managerDB.insertContainer(containerId,serviceId,ServiceName,image,commande,bindPorts)
+            else:
+                return make_response(jsonify({'error': 'Ce nom de service est daja pris.'}), 403)
         else:
             return make_response(jsonify({'error': 'Docker swar n as pas demarrer'}), 403)
         return  make_response(jsonify({'message': 'reussi'}), 202)
@@ -313,7 +319,7 @@ def api_getAllServices():
 
 # Scale a service
 # JSON params: serviceName, replicas
-@app.route('/Services/scale/', methods = ['POST'])
+@app.route('/Services/scale', methods = ['POST'])
 def api_scaleService():
     serviceName = request.get_json(force = True)['serviceName']
 
@@ -349,7 +355,7 @@ def api_scaleService():
             if dockerSwarm.deleteServiceById(dockerServiceID):
                 managerDB.getContainersCollection().delete_one({'serviceId': dockerServiceID})
                 nbDeleted += 1
-        managerDB.getServicesCollection().update_one({'_id': serv['_id']}, {'$set': {'replicas': oldReplicas - newReplicas}})
+        managerDB.getServicesCollection().update_one({'_id': serv['_id']}, {'$set': {'replicas': oldReplicas - nbDeleted}})
 
     if newReplicas > oldReplicas:
         # add newReplicas - oldReplicas containers
@@ -366,7 +372,7 @@ def api_scaleService():
                 managerDB.insertContainer(serv['_id'], dockerServiceID, username + '-' + serviceName + '-' + str(cntnrsCount + i + 1),
                     someCntnr['image'], someCntnr['cmd'], someCntnr['bindPorts'])
                 nbAdded += 1
-        managerDB.getServicesCollection.update_one({'_id': serv['_id']}, {'$set': {'replicas': newReplicas - oldReplicas}})
+        managerDB.getServicesCollection.update_one({'_id': serv['_id']}, {'$set': {'replicas': oldReplicas + nbAdded}})
     return make_response(jsonify({'success': 'Service scaled to ' + str(newReplicas) + ' replicas'}), 202)
 
 
@@ -403,22 +409,18 @@ def verify_password(username, password):
 @app.route('/Services/delete',methods = ['POST'])
 def deleteAllContainers():
     serviceName = request.get_json(force=True)['nameservice']
-    #serviceName = session['username']+"-"+serviceName
-    result =  managerDB.getServicesCollection().find({"userId" : session['username']})
+    result =  managerDB.getServicesCollection().find({"userId" : session['username'], "serviceName" : serviceName})
 
     if result == None:
         return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
     else:
         try:
-            for num in range(0,result.count()):
-                if serviceName == result[num]['serviceName']:
-                    #serviceId = result[num]['_id']
-                    containerId = result[num]['_id']
-                    containersBD = managerDB.getContainersCollection().find({"containerId" : containerId })
-                    for numContainer in range(0,containersBD.count()):
-                        dockerSwarm.deleteServiceById(containersBD[0]['serviceId'])
-                        managerDB.getContainersCollection().delete_one({"serviceId": containersBD[0]['serviceId']})
-                        managerDB.getServicesCollection().delete_one({"_id": containerId})
+            containerId = result[0]['_id']
+            containersBD = managerDB.getContainersCollection().find({"containerId" : containerId })
+            for numContainer in range(0,containersBD.count()):
+                dockerSwarm.deleteServiceById(containersBD[0]['serviceId'])
+                managerDB.getContainersCollection().delete_one({"serviceId": containersBD[0]['serviceId']})
+            managerDB.getServicesCollection().delete_one({"_id": containerId})
         except IndexError as err:
             print err
         return make_response(jsonify({'success': 'Tous les services on ete supprimer'}), 202)
@@ -429,17 +431,17 @@ def deleteAllContainers():
 def deleteAllServices():
     result =  managerDB.getServicesCollection().find({"userId" : session['username']})
 
-    if result == None:
-        return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
+    if result.count() == 0:
+        return make_response(jsonify({'error': 'aucun service n existe'}), 403)
     else:
         try:
             for num in range(0,result.count()):
-                containerId = result[num]['_id']
+                containerId = result[0]['_id']
                 containersBD = managerDB.getContainersCollection().find({"containerId" : containerId })
                 for numContainer in range(0,containersBD.count()):
-                    dockerSwarm.deleteServiceById(containersBD[numContainer]['serviceId'])
-                    managerDB.getContainersCollection().delete_many({"serviceId": containersBD[numContainer]['serviceId']})
-                    managerDB.getServicesCollection().delete_one({"_id": containerId})
+                    dockerSwarm.deleteServiceById(containersBD[0]['serviceId'])
+                    managerDB.getContainersCollection().delete_one({"serviceId": containersBD[0]['serviceId']})
+                managerDB.getServicesCollection().delete_one({"_id": containerId})
         except IndexError as err:
             print err
         return make_response(jsonify({'success': 'Tous les services on ete supprimer'}), 202)
@@ -449,13 +451,14 @@ def deleteAllServices():
 def deleteService():
     serviceName = request.get_json(force=True)['nameservicedocker']
     servicedb   = managerDB.getContainersCollection().find_one({"ContainerName" : serviceName})
-    if servicedb == None:
+    if servicedb is None:
         return make_response(jsonify({'error': 'aucun service de ce nom n existe'}), 403)
     else:
         dockerSwarm.deleteServiceById(servicedb['serviceId'])
         service   = managerDB.getServicesCollection().find_one({ "_id": servicedb['containerId']})
         newReplicas = int(service['replicas']) -1
         managerDB.getServicesCollection().update( { "_id": servicedb['containerId']},  { "$set": {"replicas" :str(newReplicas)}})
+        managerDB.getContainersCollection().delete_one({"ContainerName" : serviceName})
         return make_response(jsonify({'success': 'Service bien supprimer'}), 202)
 
 @app.route('/providers/containers',methods = ['GET'])
