@@ -361,7 +361,7 @@ def api_scaleService():
     if newReplicas > oldReplicas:
         # add newReplicas - oldReplicas containers
         nbAdded = 0
-        cursr = managerDB.getContainersCollection().find({'containerId': serv['_id']}).sort('ContainerName', pymongo.DESCENDING).limit(1)
+        cursr = managerDB.getContainersCollection().find({'containerId': serv['_id']}).sort('ContainerNumber', pymongo.DESCENDING).limit(1)
         cntnrWithMaxCounter = None
         for c in cursr:
             cntnrWithMaxCounter = c
@@ -369,15 +369,14 @@ def api_scaleService():
         maxCounter = int(splittedCntnrName[len(splittedCntnrName) - 1])
         for i in range(newReplicas - oldReplicas):
             someCntnr = managerDB.getContainersCollection().find_one({'containerId': serv['_id']})
-            #cntnrsCount = managerDB.getContainersCollection().count({'containerId': serv['_id']})
-            currCounter = maxCounter + i
+            currCounter = maxCounter + i + 1
             newServiceName = username + '-' + serviceName + '-' + str(currCounter)
             dockerServiceID = dockerSwarm.createService(newServiceName, someCntnr['image'], someCntnr['cmd'])
             if dockerServiceID is not None:
                 managerDB.insertContainer(serv['_id'], dockerServiceID, username + '-' + serviceName + '-' + str(currCounter),
                     someCntnr['image'], someCntnr['cmd'], someCntnr['bindPorts'])
                 nbAdded += 1
-        managerDB.getServicesCollection.update_one({'_id': serv['_id']}, {'$set': {'replicas': oldReplicas + nbAdded}})
+        managerDB.getServicesCollection().update_one({'_id': serv['_id']}, {'$set': {'replicas': oldReplicas + nbAdded}})
     return make_response(jsonify({'success': 'Service scaled to ' + str(newReplicas) + ' replicas'}), 202)
 
 
