@@ -363,7 +363,7 @@ def api_scaleService():
             newServiceName = username + '-' + serviceName + '-' + str(cntnrsCount + i + 1)
             dockerServiceID = dockerSwarm.createService(newServiceName, someCntnr['image'], someCntnr['cmd'])
             if dockerServiceID is not None:
-                managerDB.insertContainer(serv['_id'], dockerServiceID, serviceName + '-' + str(cntnrsCount + i + 1),
+                managerDB.insertContainer(serv['_id'], dockerServiceID, username + '-' + serviceName + '-' + str(cntnrsCount + i + 1),
                     someCntnr['image'], someCntnr['cmd'], someCntnr['bindPorts'])
                 nbAdded += 1
         managerDB.getServicesCollection.update_one({'_id': serv['_id']}, {'$set': {'replicas': newReplicas - oldReplicas}})
