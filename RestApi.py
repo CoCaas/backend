@@ -360,16 +360,17 @@ def api_scaleService():
     if newReplicas > oldReplicas:
         # add newReplicas - oldReplicas containers
         nbAdded = 0
+        cntnrWithMaxCounter = managerDB.getContainersCollection().find({{'containerId': serv['_id']}}).sort({'ContainerName':-1}).limit(1)
+        splittedCntnrName = cntnrWithMaxCounter['ContainerName'].split('-')
+        maxCounter = int(splittedCntnrName[len(splittedCntnrName) - 1])
         for i in range(newReplicas - oldReplicas):
             someCntnr = managerDB.getContainersCollection().find_one({'containerId': serv['_id']})
             #cntnrsCount = managerDB.getContainersCollection().count({'containerId': serv['_id']})
-            cntnrWithMaxCounter = managerDB.getContainersCollection().find({{'containerId': serv['_id']}}).sort({ContainerName:-1}).limit(1)
-            splittedCntnrName = cntnr.split('-')
-            maxCounter = splittedCntnrName[len(splittedCntnrName) - 1]
-            newServiceName = username + '-' + serviceName + '-' + str(cntnrsCount + i + 1)
+            currCounter = maxCounter + i
+            newServiceName = username + '-' + serviceName + '-' + str(currCounter)
             dockerServiceID = dockerSwarm.createService(newServiceName, someCntnr['image'], someCntnr['cmd'])
             if dockerServiceID is not None:
-                managerDB.insertContainer(serv['_id'], dockerServiceID, username + '-' + serviceName + '-' + str(cntnrsCount + i + 1),
+                managerDB.insertContainer(serv['_id'], dockerServiceID, username + '-' + serviceName + '-' + str(currCounter),
                     someCntnr['image'], someCntnr['cmd'], someCntnr['bindPorts'])
                 nbAdded += 1
         managerDB.getServicesCollection.update_one({'_id': serv['_id']}, {'$set': {'replicas': oldReplicas + nbAdded}})
