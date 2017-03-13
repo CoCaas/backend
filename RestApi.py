@@ -311,10 +311,61 @@ def api_deleteServiceContainer(idService,idClient):
 def api_getAllServices():
     return "none"
 
-#Permet de reScale un service en particulier
-@app.route('/Services/scale/<nbReplicas>/<idService>/<idClient>')
-def api_scaleService(nbReplicas,idService,idClient):
-    return temp
+# Scale a service
+# JSON params: serviceName, replicas
+@app.route('/Services/scale/', methods = ['POST'])
+def api_scaleService():
+    serviceName = request.get_json(force = True)['serviceName']
+
+    if serviceName is None:
+        return make_response(jsonify({'error': 'No service name provided'}), 403)
+    
+
+    # fail if client is not authenticated
+    if 'username' not in session:
+        return make_response(jsonify({'error': 'User not authenticated'}), 403)
+
+    newReplicas = 0
+    try:
+        newReplicas = int(request.get_json(force = True)['replicas'])
+        if newReplicas <= 0:
+            raise ValueError('Invalid number of replicas')
+    except ValueError:
+        return make_response(jsonify({'error': 'Invalid number of replicas'}), 403)
+
+    username = session['username']
+    serv = managerDB.getServicesCollection().find_one({'userId': username, 'serviceName': serviceName})
+    
+    if serv is None:
+        return make_response(jsonify({'error': 'Could not find the service ' + serviceName}), 403)
+
+    oldReplicas = serv['replicas']
+    if newReplicas < oldReplicas:
+        # delete oldReplicas - newReplicas containers
+        nbDeleted = 0
+        for i in range(oldReplicas - newReplicas):
+            cntnr = managerDB.getContainersCollection().find_one({'containerId': serv['_id']})
+            dockerServiceID = cntnr['serviceId']
+            if dockerSwarm.deleteServiceById(dockerServiceID):
+                managerDB.getContainersCollection().delete_one({'serviceId': dockerServiceID})
+                nbDeleted += 1
+        managerDB.getServicesCollection().update_one({'_id': serv['_id']}, {'$set': {'replicas': oldReplicas - newReplicas}})
+
+    if newReplicas > oldReplicas:
+        # add newReplicas - oldReplicas containers
+        nbAdded = 0
+        for i in range(newReplicas - oldReplicas):
+            someCntnr = managerDB.getContainersCollection().find_one({'containerId': serv['_id']})
+            cntnrsCount = managerDB.getContainersCollection().count({'containerId': serv['_id']})
+            newServiceName = username + '-' + serviceName + '-' + str(cntnrsCount + i + 1)
+            dockerServiceID = dockerSwarm.createService(newServiceName, someCntnr['image'], someCntnr['cmd'])
+            if dockerServiceID is not None:
+                managerDB.insertContainer(serv['_id'], dockerServiceID, serviceName + '-' + str(cntnrsCount + i + 1),
+                    someCntnr['image'], someCntnr['cmd'], someCntnr['bindPorts'])
+                nbAdded += 1
+        managerDB.getServicesCollection.update_one({'_id': serv['_id']}, {'$set': {'replicas': newReplicas - oldReplicas}})
+    return make_response(jsonify({'success': 'Service scaled to ' + str(newReplicas) + ' replicas'}), 202)
+
 
 #Permet d'obtenir les informations concernant le swarm
 @app.route('/swarm',methods = ['GET'])
@@ -403,6 +454,15 @@ def deleteService():
         newReplicas = int(service['replicas']) -1
         managerDB.getServicesCollection().update( { "_id": servicedb['containerId']},  { "$set": {"replicas" :str(newReplicas)}})
         return make_response(jsonify({'success': 'Service bien supprimer'}), 202)
+
+@app.route('/providers/containers',methods = ['GET'])
+def getContainersOnProvider():
+    if 'username' not in session:
+        return make_response(jsonify({'error': 'user not logged in'}), 403)
+    username = session['username']
+    #TODO finish function
+    return
+
 
 #cette fonction verifie si l utilisateur est deja connecte
 @app.route('/User/checkconnection',methods = ['POST'])
