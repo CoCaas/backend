@@ -20,6 +20,7 @@ from flask import Flask, url_for, Response, jsonify, session, make_response,requ
 from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
 import json
+import pymongo
 import managerDB
 import dockerSwarm
 app =Flask(__name__, static_url_path='')
@@ -360,7 +361,7 @@ def api_scaleService():
     if newReplicas > oldReplicas:
         # add newReplicas - oldReplicas containers
         nbAdded = 0
-        cntnrWithMaxCounter = managerDB.getContainersCollection().find({'containerId': serv['_id']}).sort({ContainerName:-1}).limit(1)
+        cntnrWithMaxCounter = managerDB.getContainersCollection().find({'containerId': serv['_id']}).sort('ContainerName', pymongo.DESCENDING).limit(1)
         splittedCntnrName = cntnrWithMaxCounter['ContainerName'].split('-')
         maxCounter = int(splittedCntnrName[len(splittedCntnrName) - 1])
         for i in range(newReplicas - oldReplicas):
