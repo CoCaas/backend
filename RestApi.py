@@ -345,7 +345,7 @@ def api_scaleService():
     if serv is None:
         return make_response(jsonify({'error': 'Could not find the service ' + serviceName}), 403)
 
-    oldReplicas = serv['replicas']
+    oldReplicas = int(serv['replicas'])
     if newReplicas < oldReplicas:
         # delete oldReplicas - newReplicas containers
         nbDeleted = 0
