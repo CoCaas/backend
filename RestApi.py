@@ -15,7 +15,6 @@
 #pip install Flask-HTTPAuth
 #pip install pymongo
 #pip install docker
-#TODO voir avec Quentin si on peut inclure le nodeID dans provider
 from flask import Flask, url_for, Response, jsonify, session, make_response,request, send_from_directory
 from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
@@ -69,19 +68,41 @@ def api_setProvider():
         return make_response(jsonify({'error': 'cet utilisateur n existe pas'}), 403)
     else:
         result =  managerDB.getUsersCollection().find_one({"user" : username})
-        if pwd_context.verify(password, result['password']):
-            managerDB.insertProvider(username,nbCPU,nbMemory,nbStockage,nodeIP)
-            return make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage, 'nodeIP' : nodeIP }), 202)
+        if  result is not None:
+            if pwd_context.verify(password, result['password']):
+                providerResult = managerDB.getProviderCollection().find_one({"userId" : username})
+                if providerResult is None:
+                    managerDB.insertProvider(username,nbCPU,nbMemory,nbStockage,nodeIP)
+                else:
+                    managerDB.getProviderCollection().update( { "user": username},  { "$set": {"nodeIP" : nodeIP}})
+                return make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage, 'nodeIP' : nodeIP }), 202)
+            else:
+                return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
         else:
-            return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
+            return make_response(jsonify({'error': 'Utilisateur non trouver'}), 403)
 
 
-#TODO Permet de recuperer les informations d un noeud grace a l id
-@app.route('/Provider', methods = ['POST'])
+
+
+@app.route('/Provider', methods = ['GET'])
 def api_getProvider():
     if 'username' in session:
-        managerDB.getProviderCollection().find_one( {"userId" : session['username']} )
-        return  make_response(jsonify({'message': 'reussi'}), 202)
+        result = managerDB.getProviderCollection().find_one( {"userId" : session['username']} )
+        user = managerDB.getUsersCollection().find_one( {"userId" : session['username']} )
+        if result is None:
+            return  make_response(jsonify({'message': 'Vous n avez pas soumis de provider'}), 403)
+        else:
+            if user is None:
+                make_response(jsonify({'message': 'Ce nom d utilisateur n existe pas'}), 403)
+            else:
+                Jsondata = {}
+                Jsondata['cpuLimit'] = result['cpuLimit']
+                Jsondata['memorylimit'] = result['memorylimit']
+                Jsondata['storageLimit'] = result['storageLimit']
+                Jsondata['nodeIP'] = result['nodeIP']
+                Jsondata['firstname'] = user['firstname']
+                Jsondata['lastname'] = user['lastname']
+                return  make_response(jsonify({'Provider': json.dumps(Jsondata)}), 202)
     else:
         return  make_response ( jsonify({'error': 'veuillez vous connecter svp'}), 403 )
 
@@ -198,12 +219,6 @@ def api_addUser():
         return  make_response(jsonify({'error': 'cet utilisateur existe deja'}), 403)
 
 
-#Permet d obtenir la liste des containers d'un service precis
-@app.route('/Services/Container')
-def api_getServiceContainer():
-    print "adresse IP "+request.remote_addr
-
-
 #Permet d inserer un nouveau service
 #name : le nom du services
 #nbReplicas : le nombre de replicas
@@ -304,20 +319,6 @@ def getAllUserServices():
         return  make_response(jsonify({'error': 'veuillez vous connecter svp'}), 403)
 
 
-#Permet de supprimer tous les services lies a un client
-@app.route('/Services/delete/<idClient>')
-def api_deleteServices(idClient):
-    return temp
-#permet de supprimer un service particulie lie e un client
-@app.route('/Services/delete/<idService>/<idClient>')
-def api_deleteServiceContainer(idService,idClient):
-    return temp
-
-#Retourne la liste des service cree par un client
-@app.route('/Services',methods = ['GET'])
-#@auth.login_required
-def api_getAllServices():
-    return "none"
 
 # Scale a service
 # JSON params: serviceName, replicas
@@ -327,7 +328,7 @@ def api_scaleService():
 
     if serviceName is None:
         return make_response(jsonify({'error': 'No service name provided'}), 403)
-    
+
 
     # fail if client is not authenticated
     if 'username' not in session:
@@ -343,7 +344,7 @@ def api_scaleService():
 
     username = session['username']
     serv = managerDB.getServicesCollection().find_one({'userId': username, 'serviceName': serviceName})
-    
+
     if serv is None:
         return make_response(jsonify({'error': 'Could not find the service ' + serviceName}), 403)
 
