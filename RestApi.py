@@ -242,11 +242,14 @@ def api_addService():
 
             if result.count() == 0:
                 containerId = managerDB.insertService(username,nbReplicas,name)
-                print containerId
                 for num in range(1,int(nbReplicas) + 1):
                     ServiceName =username+"-"+ serviceGlobalName+"-"+str(num)
                     serviceId = dockerSwarm.createService(ServiceName,image,commande)
-                    managerDB.insertContainer(containerId,serviceId,ServiceName,image,commande,bindPorts)
+                    if serviceId is not None:
+                        managerDB.insertContainer(containerId,serviceId,ServiceName,image,commande,bindPorts)
+                verifie = managerDB.getContainersCollection().find({"containerId" : containerId})
+                if verifie is None:
+                    managerDB.getServicesCollection().delete_one({"serviceName" : name})
             else:
                 return make_response(jsonify({'error': 'Ce nom de service est daja pris.'}), 403)
         else:
