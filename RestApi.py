@@ -58,6 +58,9 @@ def api_setProvider():
     nbStockage = request.get_json(force=True)['nbStockage']
     username = request.get_json(force=True)['username']
     password = request.get_json(force=True)['password']
+    cpuLimit = request.get_json(force=True)['cpuLimit']
+    memorylimit = request.get_json(force=True)['memorylimit']
+    storageLimit = request.get_json(force=True)['storageLimit']
     nodeIP   = request.remote_addr
 
     if nbCPU is None or nbMemory is None or nbStockage is None or username is None or password is None or nodeIP is None:
@@ -72,23 +75,46 @@ def api_setProvider():
             if pwd_context.verify(password, result['password']):
                 providerResult = managerDB.getProviderCollection().find_one({"userId" : username})
                 if providerResult is None:
-                    managerDB.insertProvider(username,nbCPU,nbMemory,nbStockage,nodeIP)
+                    managerDB.insertProvider(username,nbCPU,nbMemory,nbStockage, cpuLimit, memorylimit, storageLimit,nodeIP)
                 else:
-                    managerDB.getProviderCollection().update( { "user": username},  { "$set": {"nodeIP" : nodeIP}})
+                    managerDB.getProviderCollection().update( { "userId": username},  { "$set": {"nodeIP" : nodeIP}})
                 return make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage, 'nodeIP' : nodeIP }), 202)
             else:
                 return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
         else:
             return make_response(jsonify({'error': 'Utilisateur non trouver'}), 403)
 
+@app.route('/Provider/update', methods = ['POST'])
+def api_updateProvider():
+    cpuCurrent = request.get_json(force=True)['cpuCurrent']
+    memoryCurrent = request.get_json(force=True)['memoryCurrent']
+    storageCurrent = request.get_json(force=True)['storageCurrent']
+    username = request.get_json(force=True)['username']
+    password = request.get_json(force=True)['password']
 
+    if cpuCurrent is None or memoryCurrent is None or storageCurrent is None or username is None or password is None:
+        return  make_response(jsonify({'error': 'un argument est manquant'}), 403)
+
+    numResult = managerDB.getUsersCollection().find({"user" : username}).count()
+    if numResult == 0:
+        return make_response(jsonify({'error': 'cet utilisateur n existe pas'}), 403)
+    else:
+        result =  managerDB.getUsersCollection().find_one({"user" : username})
+        if  result is not None:
+            if pwd_context.verify(password, result['password']):
+                managerDB.getProviderCollection().update( { "userId": username},  { "$set": {"cpuCurrent" : cpuCurrent, "memoryCurrent" : memoryCurrent, "storageCurrent" : storageCurrent}})
+                return make_response(jsonify({'message': 'reussi' }), 202)
+            else:
+                return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
+        else:
+            return make_response(jsonify({'error': 'Utilisateur non trouver'}), 403)
 
 
 @app.route('/Provider', methods = ['GET'])
 def api_getProvider():
     if 'username' in session:
         result = managerDB.getProviderCollection().find_one( {"userId" : session['username']} )
-        user = managerDB.getUsersCollection().find_one( {"userId" : session['username']} )
+        user = managerDB.getUsersCollection().find_one( {"user" : session['username']} )
         if result is None:
             return  make_response(jsonify({'message': 'Vous n avez pas soumis de provider'}), 403)
         else:
@@ -99,6 +125,9 @@ def api_getProvider():
                 Jsondata['cpuLimit'] = result['cpuLimit']
                 Jsondata['memorylimit'] = result['memorylimit']
                 Jsondata['storageLimit'] = result['storageLimit']
+                Jsondata['memoryCurrent'] = result['memoryCurrent']
+                Jsondata['cpuCurrent'] = result['cpuCurrent']
+                Jsondata['storageCurrent'] = result['storageCurrent']
                 Jsondata['nodeIP'] = result['nodeIP']
                 Jsondata['firstname'] = user['firstname']
                 Jsondata['lastname'] = user['lastname']
@@ -483,7 +512,7 @@ def checkconnection():
 
 @app.route('/Providers/services', methods =['GET'])
 def getAllProviderServices():
-    
+
     if 'username' not in session:
         return make_response(jsonify({'error': 'User not authenticated'}), 403)
 
@@ -508,7 +537,7 @@ def getAllProviderServices():
             # get the logical service that this docker service belongs to
             logicalServiceRecord = managerDB.getServicesCollection().find_one({'_id': dockerServiceRecord['containerId']})
             if logicalServiceRecord is not None:
-                if getProviderInfo:    
+                if getProviderInfo:
                     serviceDict['username'] = logicalServiceRecord['userId']
                     serviceDict['hostname'] = providerNode.attrs['Description']['Hostname']
                     serviceDict['OS']       = providerNode.attrs['Description']['Platform']['OS']
@@ -548,9 +577,9 @@ def getAllProviderServices():
                     )
     return make_response(jsonify(serviceDict), 202)
 
-                
 
-        
+
+
 if __name__ == '__main__':
     if(dockerSwarm.swarmExist() == False):
         state = dockerSwarm.createSwarm()
@@ -563,9 +592,11 @@ if __name__ == '__main__':
             print "docker swarm Token : "+swarmToken
             print "docker swarm created date :"+swarmDate
             print "Initiation de dockerSwarm reussi"
-            app.run(host = '0.0.0.0', port = 80)
+            #host = '0.0.0.0', port = 80
+            app.run()
         else:
             print "Un probleme avec l initiation du swarm"
     else:
         print "Utilisation du docker existant"
-        app.run(host = '0.0.0.0', port = 80)
+        #host = '0.0.0.0', port = 80
+        app.run()
