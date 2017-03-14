@@ -560,9 +560,9 @@ if __name__ == '__main__':
             print "docker swarm Token : "+swarmToken
             print "docker swarm created date :"+swarmDate
             print "Initiation de dockerSwarm reussi"
-            app.run()
+            app.run(host = '0.0.0.0', port = 80)
         else:
             print "Un probleme avec l initiation du swarm"
     else:
         print "Utilisation du docker existant"
-        app.run()
+        app.run(host = '0.0.0.0', port = 80)
