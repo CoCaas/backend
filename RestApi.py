@@ -133,7 +133,7 @@ def api_getProvider():
                 Jsondata['storageMachine'] = result['storageMachine']
                 Jsondata['firstname'] = user['firstname']
                 Jsondata['lastname'] = user['lastname']
-                return  make_response(jsonify({'Provider': json.dumps(Jsondata)}), 202)
+                return  make_response(jsonify(Jsondata), 202)
     else:
         return  make_response ( jsonify({'error': 'veuillez vous connecter svp'}), 403 )
 
