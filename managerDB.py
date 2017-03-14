@@ -76,13 +76,20 @@ def insertUser(username,password,firstname,lastname):
     return userId
 
 
-def insertProvider(userId, cpuLimit,memorylimit,storageLimit,nodeIP):
+def insertProvider(userId, cpuMachine, memoryMachine, storageMachine, cpuLimit, memorylimit, storageLimit, nodeIP):
     provider = {
         "userId" : userId,
+        "cpuMachine" : cpuMachine,
+        "memoryMachine" : memoryMachine,
+        "storageMachine" : storageMachine,
         "cpuLimit" : cpuLimit,
         "memorylimit" : memorylimit,
         "storageLimit" : storageLimit,
+        "cpuCurrent" : 0,
+        "memoryCurrent" : 0,
+        "storageCurrent" : 0,
         "nodeIP"      : nodeIP
+        "nodeID"      : ""
     }
 
     providerId = getProviderCollection().insert_one(provider).inserted_id
