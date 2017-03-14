@@ -23,7 +23,7 @@ import pymongo
 import managerDB
 import dockerSwarm
 app =Flask(__name__, static_url_path='')
-app.secret_key = 'de la merde'
+app.secret_key = 'cocaas2017'
 auth = HTTPBasicAuth()
 
 @app.route('/')
@@ -80,6 +80,9 @@ def api_setProvider():
                 return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
         else:
             return make_response(jsonify({'error': 'Utilisateur non trouver'}), 403)
+
+
+
 
 @app.route('/Provider', methods = ['GET'])
 def api_getProvider():
@@ -467,14 +470,6 @@ def deleteService():
         managerDB.getContainersCollection().delete_one({"ContainerName" : serviceName})
         return make_response(jsonify({'success': 'Service bien supprimer'}), 202)
 
-@app.route('/providers/containers',methods = ['GET'])
-def getContainersOnProvider():
-    if 'username' not in session:
-        return make_response(jsonify({'error': 'user not logged in'}), 403)
-    username = session['username']
-    #TODO finish function
-    return
-
 
 #cette fonction verifie si l utilisateur est deja connecte
 @app.route('/User/checkconnection',methods = ['POST'])
@@ -485,6 +480,77 @@ def checkconnection():
     else:
         return make_response(jsonify({'success': 'utilisateur non connecte'}), 403)
 
+
+@app.route('/Providers/services', methods =['GET'])
+def getAllProviderServices():
+    
+    if 'username' not in session:
+        return make_response(jsonify({'error': 'User not authenticated'}), 403)
+
+    username = session['username']
+    providerRecord = managerDB.getProviderCollection().find_one({'userId': username})
+    if providerRecord is None:
+        return make_response(jsonify({'error': 'User is not a registered provider'}), 403)
+    # do we suppose we always have the nodeID for a given provider ?
+    providerNodeID = providerRecord['nodeID']
+    providerNode = dockerSwarm.getNode(providerRecord['nodeID'])
+    providerTasks = dockerSwarm.lowLvlClient.tasks({'node': providerNodeID, 'desired-state': 'running'})
+
+    servicesDict = {}
+    serviceDict['services'] = []
+    foundLogicalServicesNames = {}
+    getProviderInfo = True
+    for t in providerTasks:
+        # get the name of the logical service that this task belongs to
+        dockerServiceID = t['ServiceID']
+        dockerServiceRecord = managerDB.getContainersCollection().find_one({'serviceId': dockerServiceID})
+        if dockerServiceRecord is not None:
+            # get the logical service that this docker service belongs to
+            logicalServiceRecord = managerDB.getServicesCollection().find_one({'_id': dockerServiceRecord['containerId']})
+            if logicalServiceRecord is not None:
+                if getProviderInfo:    
+                    serviceDict['username'] = logicalServiceRecord['userId']
+                    serviceDict['hostname'] = providerNode.attrs['Description']['Hostname']
+                    serviceDict['OS']       = providerNode.attrs['Description']['Platform']['OS']
+                    serviceDict['ipAddr']   = providerNode.attrs['Description']['Hostname']
+                lsrNameWithUser = logicalServiceRecord['userId'] + '-' + logicalServiceRecord['serviceName']
+                already = False
+                if lsrNameWithUser in foundLogicalServicesNames:
+                    already = True
+                else:
+                    foundLogicalServicesNames[lsrNameWithUser] = len(serviceDict['services'])
+
+                if not already:
+                    serviceDict['services'].append(
+                        {
+                            'serviceName': logicalServiceRecord['serviceName'],
+                            'replicas': logicalServiceRecord['replicas'],
+                            'containers': [
+                                {
+                                    'containerName': dockerServiceRecord['ContainerName'],
+                                    'image': dockerServiceRecord['image'],
+                                    'command': dockerServiceRecord['cmd'],
+                                    'creationDate': t['CreatedAt']
+                                }
+                            ]
+
+                        }
+                    )
+                else:
+                    servIndex = foundLogicalServicesNames[lsrNameWithUser]
+                    serviceDict['services'][servIndex]['containers'].append(
+                        {
+                            'containerName': dockerServiceRecord['ContainerName'],
+                            'image': dockerServiceRecord['image'],
+                            'command': dockerServiceRecord['cmd'],
+                            'creationDate': t['CreatedAt']
+                        }
+                    )
+    return make_response(jsonify(serviceDict), 202)
+
+                
+
+        
 if __name__ == '__main__':
     if(dockerSwarm.swarmExist() == False):
         state = dockerSwarm.createSwarm()
@@ -497,9 +563,9 @@ if __name__ == '__main__':
             print "docker swarm Token : "+swarmToken
             print "docker swarm created date :"+swarmDate
             print "Initiation de dockerSwarm reussi"
-            app.run()
+            app.run(host = '0.0.0.0', port = 80)
         else:
             print "Un probleme avec l initiation du swarm"
     else:
         print "Utilisation du docker existant"
-        app.run()
+        app.run(host = '0.0.0.0', port = 80)

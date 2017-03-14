@@ -1,6 +1,9 @@
 import docker
 import json
+
+
 client = docker.from_env()
+lowLvlClient = docker.APIClient(base_url='unix://var/run/docker.sock')
 
 
 #Ouverture du fichier de configuration
@@ -13,7 +16,7 @@ def leaveSwarm():
     try:
         result = client.swarm.leave(force =True)
     except docker.errors.APIError as err:
-        print err
+        result = None
     return result
 
 #fonction pour initier un swarm
@@ -22,7 +25,7 @@ def createSwarm():
     try:
         result = client.swarm.init(advertise_addr=config['swarm']['interface_addr'])
     except docker.errors.APIError as err:
-        print err
+        result = False
         leaveSwarm()
     return result
 
@@ -66,14 +69,14 @@ def createService(nom, imagee, commande):
         service = client.services.create(image = imagee, name=nom,command=commande)
         return service.id
     except docker.errors.APIError as err:
-        print err
         return None
+
 #renvoie une lise d objet service
 def allServices():
     try:
         return client.services.list()
     except docker.errors.APIError as err:
-        print err
+        return None
 
 #informations about the service
 def serviceInfos(serviceId):
@@ -82,11 +85,13 @@ def serviceInfos(serviceId):
         print service.attrs
     except docker.errors.APIError as err:
         print err
+
 def getServiceById(serviceId):
     try:
         return client.services.get(serviceId)
     except docker.errors.APIError as err:
         print err
+
 #delete a service knowing he's id
 def deleteServiceById(serviceId):
     try:
@@ -96,6 +101,7 @@ def deleteServiceById(serviceId):
     except docker.errors.APIError as err:
         print err
         return False
+
 #update the ports of a service
 #the list is in a format {80:90,100:20}
 def updateServicePort(serviceId,ListPort):
@@ -110,15 +116,10 @@ def getServiceTasks(serviceId):
     try:
         return getServiceById(serviceId).tasks({"desired-state" : "running"})
     except docker.errors.APIError as err:
-        print err
+        return None
 
 def getNode(nodeId):
     try:
         return client.nodes.get(nodeId)
     except docker.errors.APIError as err:
-        print err
-#createSwarm()
-#createService("nom1", "alpine", "ping google.com")
-#serviceInfos("8xe7fcuyz9we")
-#print getServiceById("8xe7fcuyz9we").tasks({"desired-state" : "running"})
-#print client.nodes.get('pxdp401x0x3us01bi1do84auh').attrs['Description']
+        return None
