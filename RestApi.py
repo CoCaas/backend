@@ -525,7 +525,7 @@ def getAllProviderServices():
     providerNode = dockerSwarm.getNode(providerRecord['nodeID'])
     providerTasks = dockerSwarm.lowLvlClient.tasks({'node': providerNodeID, 'desired-state': 'running'})
 
-    servicesDict = {}
+    serviceDict = {}
     serviceDict['services'] = []
     foundLogicalServicesNames = {}
     getProviderInfo = True
