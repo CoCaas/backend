@@ -79,8 +79,22 @@ def api_setProvider():
 @app.route('/Provider', methods = ['POST'])
 def api_getProvider():
     if 'username' in session:
-        managerDB.getProviderCollection().find_one( {"userId" : session['username']} )
-        return  make_response(jsonify({'message': 'reussi'}), 202)
+        result = managerDB.getProviderCollection().find_one( {"userId" : session['username']} )
+        user = managerDB.getUsersCollection().find_one( {"userId" : session['username']} )
+        if result is None:
+            return  make_response(jsonify({'message': 'Vous n avez pas soumis de provider'}), 403)
+        else:
+            if user is None:
+                make_response(jsonify({'message': 'Ce nom d utilisateur n existe pas'}), 403)
+            else:
+                Jsondata = {}
+                Jsondata['cpuLimit'] = result['cpuLimit']
+                Jsondata['memorylimit'] = result['memorylimit']
+                Jsondata['storageLimit'] = result['storageLimit']
+                Jsondata['nodeIP'] = result['nodeIP']
+                Jsondata['firstname'] = user['firstname']
+                Jsondata['lastname'] = user['lastname']
+                return  make_response(jsonify({'Provider': json.dumps(Jsondata)}), 202)
     else:
         return  make_response ( jsonify({'error': 'veuillez vous connecter svp'}), 403 )
 
