@@ -128,7 +128,9 @@ def api_getProvider():
                 Jsondata['memoryCurrent'] = result['memoryCurrent']
                 Jsondata['cpuCurrent'] = result['cpuCurrent']
                 Jsondata['storageCurrent'] = result['storageCurrent']
-                Jsondata['nodeIP'] = result['nodeIP']
+                Jsondata['cpuMachine'] = result['cpuMachine']
+                Jsondata['memoryMachine'] = result['memoryMachine']
+                Jsondata['storageMachine'] = result['storageMachine']
                 Jsondata['firstname'] = user['firstname']
                 Jsondata['lastname'] = user['lastname']
                 return  make_response(jsonify({'Provider': json.dumps(Jsondata)}), 202)
@@ -525,7 +527,7 @@ def getAllProviderServices():
     providerNode = dockerSwarm.getNode(providerRecord['nodeID'])
     providerTasks = dockerSwarm.lowLvlClient.tasks({'node': providerNodeID, 'desired-state': 'running'})
 
-    serviceDict = {}
+    servicesDict = {}
     serviceDict['services'] = []
     foundLogicalServicesNames = {}
     getProviderInfo = True
@@ -592,11 +594,9 @@ if __name__ == '__main__':
             print "docker swarm Token : "+swarmToken
             print "docker swarm created date :"+swarmDate
             print "Initiation de dockerSwarm reussi"
-            #host = '0.0.0.0', port = 80
-            app.run()
+            app.run(host = '0.0.0.0', port = 80)
         else:
             print "Un probleme avec l initiation du swarm"
     else:
         print "Utilisation du docker existant"
-        #host = '0.0.0.0', port = 80
-        app.run()
+        app.run(host = '0.0.0.0', port = 80)
