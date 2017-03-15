@@ -104,6 +104,8 @@ def insertService(userId,replicas,serviceName):
     }
     ServiceDBId = getServicesCollection().insert_one(service).inserted_id
     return ServiceDBId
+
+
 def insertContainer(containerId,serviceId,ContainerName,image,cmd, bindPorts):
     splittedName = ContainerName.split('-')
     num = int(splittedName[len(splittedName) - 1])

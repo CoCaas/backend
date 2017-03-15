@@ -64,12 +64,29 @@ def swarmExist():
     except AttributeError as err:
         return False
 #cree un service
-def createService(nom, imagee, commande):
+def createService(nom, imagee, commande, portsToExpose):
+    specPorts = []
+    for p in portsToExpose:
+        specPorts.append({None: p})
+    endpointSpec = docker.types.EndpointSpec(mode = 'vip', ports = specPorts)
     try:
-        service = client.services.create(image = imagee, name=nom,command=commande)
+        service = client.services.create(image = imagee, name = nom, command = commande, endpoint_spec = endpointSpec)
         return service.id
     except docker.errors.APIError as err:
         return None
+
+def getServicePublishedPorts(serviceID):
+    service = None
+    try:
+        service = docker.services.get(serviceID)    
+    except:
+        return None
+
+    ports = []
+    portsArray = service.attrs['Endpoint']['Ports']
+    for p in portsArray:
+        ports.append(int(p['PublishedPort']))
+    return ports
 
 #renvoie une lise d objet service
 def allServices():

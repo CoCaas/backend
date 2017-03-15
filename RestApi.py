@@ -278,9 +278,14 @@ def api_addService():
                 containerId = managerDB.insertService(username,nbReplicas,name)
                 for num in range(1,int(nbReplicas) + 1):
                     ServiceName =username+"-"+ serviceGlobalName+"-"+str(num)
-                    serviceId = dockerSwarm.createService(ServiceName,image,commande)
+                    serviceId = dockerSwarm.createService(ServiceName, image, commande, bindPorts)
                     if serviceId is not None:
-                        managerDB.insertContainer(containerId,serviceId,ServiceName,image,commande,bindPorts)
+                        publishedPorts = dockerSwarm.getServicePublishedPorts(serviceId)
+                        ports = []
+                        if publishedPorts is not None:
+                            for i in range(len(bindPorts)):
+                                ports.append({bindPorts[i]: publishedPorts[i]})
+                        managerDB.insertContainer(containerId,serviceId,ServiceName,image,commande,ports)
                 verifie = managerDB.getContainersCollection().find({"containerId" : containerId})
                 if verifie is None:
                     managerDB.getServicesCollection().delete_one({"serviceName" : name})
