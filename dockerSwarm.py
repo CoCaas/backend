@@ -1,4 +1,5 @@
 import docker
+import subprocess
 import json
 
 
@@ -66,19 +67,32 @@ def swarmExist():
 #cree un service
 def createService(nom, imagee, commande, portsToExpose):
     specPorts = []
+    #for p in portsToExpose:
+        #specPorts.append({None: p})
+    #endpointSpec = docker.types.EndpointSpec(mode = 'vip', ports = specPorts)
+    #try:
+        #service = client.services.create(image = imagee, name = nom, command = commande, endpoint_spec = endpointSpec)
+    portArg = ""
     for p in portsToExpose:
-        specPorts.append({None: p})
-    endpointSpec = docker.types.EndpointSpec(mode = 'vip', ports = specPorts)
-    try:
-        service = client.services.create(image = imagee, name = nom, command = commande, endpoint_spec = endpointSpec)
-        return service.id
-    except docker.errors.APIError as err:
+        portArg = portArg + "-p " + p
+    commandArg = commande
+    if commande is None:
+        commandArg = ""
+    
+    args = "docker service create --name " + nom + " --replicas 1 " + portsArg + " " + image + " " +commandArg
+    process = subprocess.Popen(args = args, stdout = subprocess.PIPE)
+    outdata, outerr = process.communicate()
+    if outerr is not None:
         return None
+    return outdata
+        #return service.id
+    #except docker.errors.APIError as err:
+        #return None
 
 def getServicePublishedPorts(serviceID):
     service = None
     try:
-        service = docker.services.get(serviceID)    
+        service = client.services.get(serviceID)    
     except:
         return None
 
