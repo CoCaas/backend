@@ -85,9 +85,9 @@ def insertProvider(userId, cpuMachine, memoryMachine, storageMachine, cpuLimit, 
         "cpuLimit" : cpuLimit,
         "memorylimit" : memorylimit,
         "storageLimit" : storageLimit,
-        "cpuCurrent" : 0,
-        "memoryCurrent" : 0,
-        "storageCurrent" : 0,
+        "cpuCurrent" : "0",
+        "memoryCurrent" : "0",
+        "storageCurrent" : "0",
         "nodeIP"      : nodeIP,
         "nodeID"      : ""
     }
