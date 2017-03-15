@@ -25,6 +25,7 @@ import dockerSwarm
 app =Flask(__name__, static_url_path='')
 app.secret_key = 'cocaas2017'
 auth = HTTPBasicAuth()
+SERVER_PORT = 80
 
 @app.route('/')
 def send_welcome_page():
@@ -53,14 +54,18 @@ def send_html(path):
 #nbStockage: le nombre de disque a alouer
 @app.route('/Provider/new', methods = ['POST'])
 def api_setProvider():
-    nbCPU = request.get_json(force=True)['nbCPU']
-    nbMemory = request.get_json(force=True)['nbMemory']
-    nbStockage = request.get_json(force=True)['nbStockage']
+
     username = request.get_json(force=True)['username']
     password = request.get_json(force=True)['password']
+
     cpuLimit = request.get_json(force=True)['cpuLimit']
     memorylimit = request.get_json(force=True)['memorylimit']
     storageLimit = request.get_json(force=True)['storageLimit']
+
+    cpuMachine = request.get_json(force=True)['cpuMachine']
+    memoryMachine = request.get_json(force=True)['memoryMachine']
+    storageMachine = request.get_json(force=True)['storageMachine']
+
     nodeIP   = request.remote_addr
 
     if nbCPU is None or nbMemory is None or nbStockage is None or username is None or password is None or nodeIP is None:
@@ -75,7 +80,7 @@ def api_setProvider():
             if pwd_context.verify(password, result['password']):
                 providerResult = managerDB.getProviderCollection().find_one({"userId" : username})
                 if providerResult is None:
-                    managerDB.insertProvider(username,nbCPU,nbMemory,nbStockage, cpuLimit, memorylimit, storageLimit,nodeIP)
+                    managerDB.insertProvider(username,cpuMachine,memoryMachine,storageMachine, cpuLimit, memorylimit, storageLimit,nodeIP)
                 else:
                     managerDB.getProviderCollection().update( { "userId": username},  { "$set": {"nodeIP" : nodeIP}})
                 return make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage, 'nodeIP' : nodeIP }), 202)
@@ -599,9 +604,9 @@ if __name__ == '__main__':
             print "docker swarm Token : "+swarmToken
             print "docker swarm created date :"+swarmDate
             print "Initiation de dockerSwarm reussi"
-            app.run(host = '0.0.0.0', port = 80)
+            app.run(host = '0.0.0.0', port = SERVER_PORT)
         else:
             print "Un probleme avec l initiation du swarm"
     else:
         print "Utilisation du docker existant"
-        app.run(host = '0.0.0.0', port = 80)
+        app.run(host = '0.0.0.0', port = SERVER_PORT)
