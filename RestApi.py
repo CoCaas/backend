@@ -295,7 +295,7 @@ def api_addService():
                         ports = []
                         if publishedPorts is not None:
                             for i in range(len(bindPorts)):
-                                ports.append({bindPorts[i]: publishedPorts[i]})
+                                ports.append({str(bindPorts[i]): publishedPorts[i]})
                         managerDB.insertContainer(containerId,serviceId,ServiceName,image,commande,ports)
                 verifie = managerDB.getContainersCollection().find({"containerId" : containerId})
                 if verifie is None:
