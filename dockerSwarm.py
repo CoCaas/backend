@@ -66,28 +66,40 @@ def swarmExist():
         return False
 #cree un service
 def createService(nom, imagee, commande, portsToExpose):
-    specPorts = []
+    #specPorts = []
     #for p in portsToExpose:
         #specPorts.append({None: p})
     #endpointSpec = docker.types.EndpointSpec(mode = 'vip', ports = specPorts)
     #try:
         #service = client.services.create(image = imagee, name = nom, command = commande, endpoint_spec = endpointSpec)
-    portArg = ""
-    for p in portsToExpose:
-        portArg = portArg + "-p " + p
-    commandArg = commande
-    if commande is None:
-        commandArg = ""
+    # portArg = []
+    # for p in portsToExpose:
+    #     portArg.append("-p")
+    #     portArg.append(p)
     
-    args = "docker service create --name " + nom + " --replicas 1 " + portsArg + " " + image + " " +commandArg
-    process = subprocess.Popen(args = args, stdout = subprocess.PIPE)
-    outdata, outerr = process.communicate()
-    if outerr is not None:
-        return None
-    return outdata
+    # #args = "service create --name " + nom + " --replicas 1 " + portArg + " " + imagee + " " +commandArg
+    # args = ['docker', 'service', 'create', '--name', nom, '--replicas', '1']
+    # args = args + portArg
+    # args.append(imagee)
+    # if commande is not None
+    #     args.append(commande)
+    # process = subprocess.Popen(args = args,stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = False)
+    # outdata, outerr = process.communicate()
+    # if outerr is not None:
+    #     return None
+    # return outdata
         #return service.id
     #except docker.errors.APIError as err:
         #return None
+    specPorts = []
+    for p in portsToExpose:
+        specPorts.append({p: None})
+    endpointSpec = docker.types.EndpointSpec(mode = 'vip', ports = specPorts)
+    try:
+        service = client.services.create(image = imagee, name = nom, command = commande, endpoint_spec = endpointSpec)
+    except:
+        return None
+    return service.id
 
 def getServicePublishedPorts(serviceID):
     service = None
