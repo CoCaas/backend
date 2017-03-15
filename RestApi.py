@@ -59,7 +59,7 @@ def api_setProvider():
     password = request.get_json(force=True)['password']
 
     cpuLimit = request.get_json(force=True)['cpuLimit']
-    memorylimit = request.get_json(force=True)['memorylimit']
+    memorylimit = request.get_json(force=True)['memoryLimit']
     storageLimit = request.get_json(force=True)['storageLimit']
 
     cpuMachine = request.get_json(force=True)['cpuMachine']
@@ -266,14 +266,17 @@ def api_addService():
     name = request.get_json(force=True)['name']
     nbReplicas = request.get_json(force=True)['nbReplicas']
     image = request.get_json(force=True)['image']
-    commande = request.get_json(force=True)['commande']
     bindPortsStr = request.get_json(force=True)['bindPorts']
+    try:
+        commande = request.get_json(force=True)['commande']
+    except KeyError as err:
+        print err
+        commande = None
 
     splt = bindPortsStr.split(',')
     bindPorts = []
     for s in splt:
         bindPorts.append(int(s))
-
 
     if name is None or nbReplicas is None or image is None or bindPorts is None:
         return make_response(jsonify({'error': 'Un des arguments est manquant'}), 403)
@@ -352,7 +355,12 @@ def getAllUserServices():
                                     Jsondata['ipMachine'] = nodeInfo['Status']['Addr']
                                     Jsondata['NomService'] = serviceInfo['Spec']['Name']
                                     Jsondata['nomImage'] = serviceInfo['Spec']['TaskTemplate']['ContainerSpec']['Image']
-                                    Jsondata['commande'] = serviceInfo['Spec']['TaskTemplate']['ContainerSpec']['Command']
+                                    try:
+                                        Jsondata['commande'] = serviceInfo['Spec']['TaskTemplate']['ContainerSpec']['Command']
+                                    except KeyError as err:
+                                        print err
+                                        Jsondata['commande'] =""
+                                        
                                     Jsondata['datecreation'] = serviceInfo['CreatedAt']
                                     Jsondata['status'] = serviceInfo['UpdateStatus']
 
