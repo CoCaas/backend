@@ -25,7 +25,7 @@ import dockerSwarm
 app =Flask(__name__, static_url_path='')
 app.secret_key = 'cocaas2017'
 auth = HTTPBasicAuth()
-SERVER_PORT = 80
+SERVER_PORT = 5000
 
 @app.route('/')
 def send_welcome_page():
@@ -59,7 +59,7 @@ def api_setProvider():
     password = request.get_json(force=True)['password']
 
     cpuLimit = request.get_json(force=True)['cpuLimit']
-    memorylimit = request.get_json(force=True)['memorylimit']
+    memorylimit = request.get_json(force=True)['memoryLimit']
     storageLimit = request.get_json(force=True)['storageLimit']
 
     cpuMachine = request.get_json(force=True)['cpuMachine']
@@ -266,8 +266,13 @@ def api_addService():
     name = request.get_json(force=True)['name']
     nbReplicas = request.get_json(force=True)['nbReplicas']
     image = request.get_json(force=True)['image']
-    commande = request.get_json(force=True)['commande']
     bindPorts = request.get_json(force=True)['bindPorts']
+    try:
+        commande = request.get_json(force=True)['commande']
+    except KeyError as err:
+        print err
+        commande = None
+
 
     if name is None or nbReplicas is None or image is None or bindPorts is None:
         return make_response(jsonify({'error': 'Un des arguments est manquant'}), 403)
