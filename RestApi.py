@@ -25,7 +25,7 @@ import dockerSwarm
 app =Flask(__name__, static_url_path='')
 app.secret_key = 'cocaas2017'
 auth = HTTPBasicAuth()
-SERVER_PORT = 5000
+SERVER_PORT = 80
 
 @app.route('/')
 def send_welcome_page():
@@ -355,7 +355,12 @@ def getAllUserServices():
                                     Jsondata['ipMachine'] = nodeInfo['Status']['Addr']
                                     Jsondata['NomService'] = serviceInfo['Spec']['Name']
                                     Jsondata['nomImage'] = serviceInfo['Spec']['TaskTemplate']['ContainerSpec']['Image']
-                                    Jsondata['commande'] = serviceInfo['Spec']['TaskTemplate']['ContainerSpec']['Command']
+                                    try:
+                                        Jsondata['commande'] = serviceInfo['Spec']['TaskTemplate']['ContainerSpec']['Command']
+                                    except KeyError as err:
+                                        print err
+                                        Jsondata['commande'] =""
+                                        
                                     Jsondata['datecreation'] = serviceInfo['CreatedAt']
                                     Jsondata['status'] = serviceInfo['UpdateStatus']
 
