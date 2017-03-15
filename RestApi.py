@@ -267,7 +267,13 @@ def api_addService():
     nbReplicas = request.get_json(force=True)['nbReplicas']
     image = request.get_json(force=True)['image']
     commande = request.get_json(force=True)['commande']
-    bindPorts = request.get_json(force=True)['bindPorts']
+    bindPortsStr = request.get_json(force=True)['bindPorts']
+
+    splt = bindPortsStr.split(',')
+    bindPorts = []
+    for s in splt:
+        bindPorts.append(int(s))
+
 
     if name is None or nbReplicas is None or image is None or bindPorts is None:
         return make_response(jsonify({'error': 'Un des arguments est manquant'}), 403)
