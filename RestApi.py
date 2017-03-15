@@ -25,6 +25,7 @@ import dockerSwarm
 app =Flask(__name__, static_url_path='')
 app.secret_key = 'cocaas2017'
 auth = HTTPBasicAuth()
+SERVER_PORT = 80
 
 @app.route('/')
 def send_welcome_page():
@@ -598,9 +599,9 @@ if __name__ == '__main__':
             print "docker swarm Token : "+swarmToken
             print "docker swarm created date :"+swarmDate
             print "Initiation de dockerSwarm reussi"
-            app.run(host = '0.0.0.0', port = 80)
+            app.run(host = '0.0.0.0', port = SERVER_PORT)
         else:
             print "Un probleme avec l initiation du swarm"
     else:
         print "Utilisation du docker existant"
-        app.run(host = '0.0.0.0', port = 80)
+        app.run(host = '0.0.0.0', port = SERVER_PORT)
