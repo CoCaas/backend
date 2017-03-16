@@ -1,6 +1,7 @@
 import docker
 import json
-import subprocess
+import os
+import time
 
 
 
@@ -127,6 +128,7 @@ Arguments:
 Return a list of ports (int), None if the operation fails.
 """
 def getServicePublishedPorts(serviceID):
+    time.sleep(3)
     service = None
     try:
         service = client.services.get(serviceID)    
