@@ -78,7 +78,7 @@ def createService(nom, imagee, commande, portsToExpose):
 def getServicePublishedPorts(serviceID):
     service = None
     try:
-        service = docker.services.get(serviceID)    
+        service = client.services.get(serviceID)    
     except:
         return None
 
