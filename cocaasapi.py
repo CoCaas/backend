@@ -576,7 +576,7 @@ def getAllProviderServices():
     # do we suppose we always have the nodeID for a given provider ?
     providerNodeID = providerRecord['nodeID']
     nodeID = providerNodeID
-    if providerNodeID == "":
+    if providerNodeID == "" or providerNodeID is None:
         # if don't already have the node ID, we find it
         nodeID = swarmapi.getNodeID(providerRecord['nodeIP'])
         persistence.getProviderCollection().update({'userId': username}, {'$set': {'nodeID': nodeID}})
