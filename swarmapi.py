@@ -239,5 +239,5 @@ def getNodeID(nodeIP):
         return None
 
     for node in allNodes:
-        if node['Status']['Addr'] == nodeIP:
+        if node.attrs['Status']['Addr'] == nodeIP:
             return node['ID']
