@@ -1,48 +1,10 @@
-#importation pour la gestion des fichiers json
-import json
 from pymongo import MongoClient
-
-#user {
-#    username :''
-#    password : ''
-#   firstname : ''
-#   lastname : ''
-#}
-
-#provider {
-#    userId = ''
-#    cpuLimit = ''
-#    memorylimit= ''
-#    storageLimit =''
-#    ipadress = ''
-#}
-
-#container {
-#   userId = ''
-#   ProviderIP=''
-#   serviceName =''
-#}
-
-#service {
-#   name = ''
-#    replicas = ''
-#    bindPorts: [...]
-#}
-
-#client {
-#   username : ''
-#   services : [service names]
-#}
-
-#swarm {
-# id : ''
-# token : ''
-# createdDate : ''
-#}
+import json
 
 
 with open('config.json') as configFile:
     config = json.load(configFile)
+
 
 client = MongoClient(config['database']['host'],int(config['database']['port']))
 db = client[config['database']['name']]
@@ -64,6 +26,7 @@ def getClientCollection():
 
 def getSwarmCollection():
     return db['swarm']
+
 
 def insertUser(username,password,firstname,lastname):
     user = {
@@ -96,6 +59,7 @@ def insertProvider(userId, cpuMachine, memoryMachine, storageMachine, cpuLimit, 
 
     return providerId
 
+
 def insertService(userId,replicas,serviceName):
     service = {
         "userId" : userId,
@@ -121,6 +85,7 @@ def insertContainer(containerId,serviceId,ContainerName,image,cmd, bindPorts):
     containerId = getContainersCollection().insert_one(container).inserted_id
     return containerId
 
+
 def insertClient(username,services):
     client = {
         "username" : username,
@@ -129,7 +94,7 @@ def insertClient(username,services):
     clientId = getClientCollection().insert_one(client).inserted_id
     return clientId
 
-#il ne peut y avoir que un seul swarm a la fois
+
 def insertSwarm(id,token,createdDate):
     swarm = {
         "id" : id,
@@ -141,9 +106,7 @@ def insertSwarm(id,token,createdDate):
     if numResult == 0:
         swarmId = getSwarmCollection().insert_one(swarm).inserted_id
     else:
+        # only one swarm can exist
         getSwarmCollection().delete_many({})
         swarmId = getSwarmCollection().insert_one(swarm).inserted_id
     return swarmId
-
-#getServicesCollection().delete_many({})
-#getContainersCollection().delete_many({})
