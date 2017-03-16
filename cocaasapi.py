@@ -111,7 +111,9 @@ def api_updateProvider():
             return make_response(jsonify({'error': 'Utilisateur non trouver'}), 403)
 
 
-
+"""
+Get provider ressource usage
+"""
 @app.route('/Provider', methods = ['GET'])
 def api_getProvider():
     if 'username' in session:
@@ -358,7 +360,7 @@ def getAllUserServices():
                                     except KeyError as err:
                                         print err
                                         Jsondata['commande'] =""
-                                        
+
                                     Jsondata['datecreation'] = serviceInfo['CreatedAt']
                                     Jsondata['status'] = serviceInfo['UpdateStatus']
 
@@ -573,7 +575,7 @@ def getAllProviderServices():
         return make_response(jsonify({'error': 'User is not a registered provider'}), 403)
     # do we suppose we always have the nodeID for a given provider ?
     providerNodeID = providerRecord['nodeID']
-    
+
     providerNode = None
     providerTasks = None
     try:
