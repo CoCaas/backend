@@ -1,16 +1,24 @@
 import docker
 import json
+import os
+import time
+
 
 
 client = docker.from_env()
+# A client for the Docker low-level API
+# This is used for more fine-grained interaction with the Docker daemon
 lowLvlClient = docker.APIClient(base_url='unix://var/run/docker.sock')
 
 
-#Ouverture du fichier de configuration
 with open('config.json') as configFile:
     config = json.load(configFile)
 
-#fonction pur quitter un swarm
+
+"""
+Leave any running Docker swarm
+Return True if operation was successful, False otherwise
+"""
 def leaveSwarm():
     result =False
     try:
@@ -19,7 +27,11 @@ def leaveSwarm():
         result = None
     return result
 
-#fonction pour initier un swarm
+
+"""
+Create a swarm
+Return True if operation was successful, otherwise leave the swarm and return False
+"""
 def createSwarm():
     result = False
     try:
@@ -29,53 +41,94 @@ def createSwarm():
         leaveSwarm()
     return result
 
-#obtenir le token du swarm
+
+"""
+Return the token used by workers to join the swarm, None if operation fails
+"""
 def getSwarmToken():
     DockerInfo = client.swarm.attrs
     try:
         return DockerInfo.get('JoinTokens').get('Worker')
-    except AttributeError as err:
-        return "Error: Vous devez initier un swarm"
+    except:
+        return None
 
-#Obtenir l Id du swarm
+
+"""
+Return the swarm ID
+"""
 def getSwarmId():
     DockerInfo = client.swarm.attrs
     try:
         return DockerInfo.get('ID')
-    except AttributeError as err:
-        return "Error: Vous devez initier un swarm"
+    except:
+        return None
 
-#Obtenir la date de creation
+
+"""
+Return the swarm's creation date, None if the operation fails
+"""
 def getSwarmCreatedDate():
     DockerInfo = client.swarm.attrs
     try:
         return DockerInfo.get('CreatedAt')
-    except AttributeError as err:
-        return "Error: Vous devez initier un swarm"
-#verifie si un swarm exixt sur la machine
+    except:
+        return None
+
+
+"""
+Check if a swarm exists
+Return True if it does, False if not or the operation fails
+"""
 def swarmExist():
     DockerInfo = client.swarm.attrs
     try:
-
         if DockerInfo.get('ID') is not None:
             return True
         else:
             return False
-    except AttributeError as err:
+    except:
         return False
-#cree un service
-def createService(nom, imagee, commande, portsToExpose):
-    specPorts = []
-    for p in portsToExpose:
-        specPorts.append({None: p})
-    endpointSpec = docker.types.EndpointSpec(mode = 'vip', ports = specPorts)
-    try:
-        service = client.services.create(image = imagee, name = nom, command = commande, endpoint_spec = endpointSpec)
-        return service.id
-    except docker.errors.APIError as err:
-        return None
 
+
+"""
+Create a Docker service
+Arguments:
+    name: str - the service's name
+    image: str - the service's image
+    command: str - the command to run on the created service
+    portsToExpose: list - a list of ports to expose on the service
+Return the service ID if the service was successfully created, None otherwise
+"""
+def createService(name, image, command, portsToExpose):
+    cmd = ""
+    portArg = ""
+    
+    if command is not None :
+        cmd = command
+    
+    for p in portsToExpose:
+        portArg = portArg + ("-p ") + str(p) + " "
+    portArg = portArg[:-1]
+    args = "docker service create --name " + name + " --replicas 1 " + portArg + " " + image + " " + cmd
+    proc = os.popen(args)
+    serviceID = proc.readline().split('\n')[0]
+    exitCode = proc.close()
+
+    if exitCode is not None:
+        return None
+    else:
+        return serviceID
+    
+
+"""
+Get the published ports on a service.
+These are the ports by which the service is accessible on the swarm.
+Arguments:
+    serviceID: str - the service ID
+Return a list of ports (int), None if the operation fails.
+"""
 def getServicePublishedPorts(serviceID):
+    time.sleep(3)
     service = None
     try:
         service = client.services.get(serviceID)    
@@ -88,14 +141,22 @@ def getServicePublishedPorts(serviceID):
         ports.append(int(p['PublishedPort']))
     return ports
 
-#renvoie une lise d objet service
+
+"""
+Return a list of all the services on the swarm, None if the operation fails.
+"""
 def allServices():
     try:
         return client.services.list()
     except docker.errors.APIError as err:
         return None
 
-#informations about the service
+
+"""
+Print information about a service
+Arguments:
+    serviceId: str - the service ID
+"""
 def serviceInfos(serviceId):
     try:
         service = client.services.get(serviceId)
@@ -103,24 +164,37 @@ def serviceInfos(serviceId):
     except docker.errors.APIError as err:
         print err
 
+
+"""
+Get a sservice by its ID
+Arguments:
+    serviceId - str - the service ID
+"""
 def getServiceById(serviceId):
     try:
         return client.services.get(serviceId)
     except docker.errors.APIError as err:
         print err
 
-#delete a service knowing he's id
+
+"""
+Delete a service by its ID
+Arguments:
+    serviceId: str - the service ID
+Return True if deletion was successful, False otherwise
+"""
 def deleteServiceById(serviceId):
     try:
         service = client.services.get(serviceId)
         service.remove()
         return True
     except docker.errors.APIError as err:
-        print err
         return False
 
-#update the ports of a service
-#the list is in a format {80:90,100:20}
+
+"""
+Deprecated
+"""
 def updateServicePort(serviceId,ListPort):
     try:
         service = client.services.get(serviceId)
@@ -129,12 +203,25 @@ def updateServicePort(serviceId,ListPort):
     except docker.errors.APIError as err:
         print err
 
+
+"""
+Return all runnings tasks belonging to a service
+Arguments:
+    serviceId: str - the service ID
+Return a list of tasks dictionaries, None if operation fails.
+"""
 def getServiceTasks(serviceId):
     try:
         return getServiceById(serviceId).tasks({"desired-state" : "running"})
     except docker.errors.APIError as err:
         return None
 
+"""
+Get a swarm node by the node's ID
+Arguments:
+    nodeId: str - the node ID
+Return a Node object, None if the operation fails
+"""
 def getNode(nodeId):
     try:
         return client.nodes.get(nodeId)
