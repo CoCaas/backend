@@ -575,16 +575,16 @@ def getAllProviderServices():
         return make_response(jsonify({'error': 'User is not a registered provider'}), 403)
     # do we suppose we always have the nodeID for a given provider ?
     providerNodeID = providerRecord['nodeID']
-
+    nodeID = providerNodeID
     if providerNodeID == "":
         # if don't already have the node ID, we find it
-        nodeID = swarmapi.getNodeID(providerNodeID)
+        nodeID = swarmapi.getNodeID(providerRecord['nodeIP'])
         persistence.getProviderCollection().update({'userId': username}, {'$set': {'nodeID': nodeID}})
 
     providerNode = None
     providerTasks = None
     try:
-        providerNode = swarmapi.getNode(providerRecord['nodeID'])
+        providerNode = swarmapi.getNode(nodeID)
         providerTasks = swarmapi.lowLvlClient.tasks({'node': providerNodeID, 'desired-state': 'running'})
     except:
         return make_response(jsonify({'error': 'Internal error'}), 403)
