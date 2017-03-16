@@ -81,7 +81,7 @@ def api_setProvider():
         else:
             return make_response(jsonify({'error': 'Utilisateur non trouver'}), 403)
 
-            
+
 """
 Update provider ressource usage
 """
@@ -159,7 +159,7 @@ def api_deleteProvider():
     else:
         result =  persistence.getUsersCollection().find_one({"user" : username})
         if pwd_context.verify(password, result['password']):
-            persistence.getProviderCollection().delete_many({'username' :username})
+            persistence.getProviderCollection().delete_many({'userId' :username})
             return make_response(jsonify({'message': 'reussi'}), 202)
         else:
             return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
