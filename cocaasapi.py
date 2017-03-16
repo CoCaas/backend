@@ -60,7 +60,7 @@ def api_setProvider():
 
     nodeIP   = request.remote_addr
 
-    if nbCPU is None or nbMemory is None or nbStockage is None or username is None or password is None or nodeIP is None:
+    if cpuMachine is None or memoryMachine is None or storageMachine is None or username is None or password is None or nodeIP is None or cpuLimit is None or memorylimit is None or storageLimit is None:
         return  make_response(jsonify({'error': 'un argument est manquant'}), 403)
 
     numResult = persistence.getUsersCollection().find({"user" : username}).count()
@@ -75,13 +75,13 @@ def api_setProvider():
                     persistence.insertProvider(username,cpuMachine,memoryMachine,storageMachine, cpuLimit, memorylimit, storageLimit,nodeIP)
                 else:
                     persistence.getProviderCollection().update( { "userId": username},  { "$set": {"nodeIP" : nodeIP}})
-                return make_response(jsonify({'nbCPU': nbCPU, 'nbMemory': nbMemory, 'nbStockage' :nbStockage, 'nodeIP' : nodeIP }), 202)
+                return make_response(jsonify({'cpuLimit': cpuLimit, 'memorylimit': memorylimit, 'storageLimit' :storageLimit, 'cpuMachine': cpuMachine, 'memoryMachine': memoryMachine, 'storageMachine' :storageMachine, 'nodeIP' : nodeIP }), 202)
             else:
                 return make_response(jsonify({'error': 'Le mot de passe est incorrect'}), 403)
         else:
             return make_response(jsonify({'error': 'Utilisateur non trouver'}), 403)
 
-
+            
 """
 Update provider ressource usage
 """
