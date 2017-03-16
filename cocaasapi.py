@@ -439,7 +439,7 @@ def api_scaleService():
             #someCntnr = persistence.getContainersCollection().find_one({'containerId': serv['_id']})
             currCounter = maxCounter + i + 1
             newServiceName = username + '-' + serviceName + '-' + str(currCounter)
-            dockerServiceID = swarmapi.createService(newServiceName, someCntnr['image'], someCntnr['cmd'], ports)
+            dockerServiceID = swarmapi.createService(newServiceName, someCntnr['image'], someCntnr['cmd'], targetPorts)
             if dockerServiceID is not None:
                 publishedPorts = swarmapi.getServicePublishedPorts(dockerServiceID)
                 bindPorts = []
