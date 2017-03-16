@@ -444,7 +444,7 @@ def api_scaleService():
                 publishedPorts = swarmapi.getServicePublishedPorts(dockerServiceID)
                 bindPorts = []
                 for i in range(len(targetPorts)):
-                    bindPorts.append({str(targetPorts[i]),publishedPorts[i]})
+                    bindPorts.append({str(targetPorts[i]):publishedPorts[i]})
                 persistence.insertContainer(serv['_id'], dockerServiceID, username + '-' + serviceName + '-' + str(currCounter),
                     someCntnr['image'], someCntnr['cmd'], bindPorts)
                 nbAdded += 1
