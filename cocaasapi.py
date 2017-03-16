@@ -425,14 +425,26 @@ def api_scaleService():
             cntnrWithMaxCounter = c
         splittedCntnrName = cntnrWithMaxCounter['ContainerName'].split('-')
         maxCounter = int(splittedCntnrName[len(splittedCntnrName) - 1])
+        someCntnr = persistence.getContainersCollection().find_one({'containerId': serv['_id']})
+        # get the ports to expose on the new service
+        cntnrPorts = someCntnr['bindPorts']
+        targetPorts = []
+        for d in cntnrPorts:
+            for k in d:
+                targetPorts.append(int(k))
+
         for i in range(newReplicas - oldReplicas):
-            someCntnr = persistence.getContainersCollection().find_one({'containerId': serv['_id']})
+            #someCntnr = persistence.getContainersCollection().find_one({'containerId': serv['_id']})
             currCounter = maxCounter + i + 1
             newServiceName = username + '-' + serviceName + '-' + str(currCounter)
-            dockerServiceID = swarmapi.createService(newServiceName, someCntnr['image'], someCntnr['cmd'])
+            dockerServiceID = swarmapi.createService(newServiceName, someCntnr['image'], someCntnr['cmd'], ports)
             if dockerServiceID is not None:
+                publishedPorts = swarmapi.getServicePublishedPorts(dockerServiceID)
+                bindPorts = []
+                for i in range(len(targetPorts)):
+                    bindPorts.append({str(targetPorts[i]),publishedPorts[i]})
                 persistence.insertContainer(serv['_id'], dockerServiceID, username + '-' + serviceName + '-' + str(currCounter),
-                    someCntnr['image'], someCntnr['cmd'], someCntnr['bindPorts'])
+                    someCntnr['image'], someCntnr['cmd'], bindPorts)
                 nbAdded += 1
         persistence.getServicesCollection().update_one({'_id': serv['_id']}, {'$set': {'replicas': oldReplicas + nbAdded}})
     return make_response(jsonify({'success': 'Service scaled to ' + str(newReplicas) + ' replicas'}), 202)
