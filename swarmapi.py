@@ -227,3 +227,17 @@ def getNode(nodeId):
         return client.nodes.get(nodeId)
     except docker.errors.APIError as err:
         return None
+
+
+"""
+Get a node ID given its IP address
+"""
+def getNodeID(nodeIP):
+    try:
+        allNodes = client.nodes.list()
+    except docker.errors.APIError:
+        return None
+
+    for node in allNodes:
+        if node['Status']['Addr'] == nodeIP:
+            return node['ID']

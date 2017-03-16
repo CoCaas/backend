@@ -576,6 +576,11 @@ def getAllProviderServices():
     # do we suppose we always have the nodeID for a given provider ?
     providerNodeID = providerRecord['nodeID']
 
+    if providerNodeID == "":
+        # if don't already have the node ID, we find it
+        nodeID = swarmapi.getNodeID(providerNodeID)
+        persistence.getProviderCollection().update({'userId': username}, {'$set': {'nodeID': nodeID}})
+
     providerNode = None
     providerTasks = None
     try:
